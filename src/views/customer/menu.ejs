@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <title><%= nomeRestaurante %> - Cardápio</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/cliente.css">
+  <style>
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 50; align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.aberto { display: flex; }
+    .modal-box {
+      background: #fff; width: 100%; max-width: 480px; border-radius: 16px 16px 0 0;
+      padding: 20px 16px; max-height: 85vh; overflow-y: auto;
+    }
+    .grupo-opcao { margin-bottom: 16px; }
+    .grupo-opcao-titulo { font-weight: 600; margin-bottom: 6px; }
+    .grupo-opcao-obrigatorio { color: #b3261e; font-size: 12px; font-weight: normal; }
+    .opcao-valor-linha { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+    .opcao-valor-linha label { margin: 0; font-size: 15px; color: #1f2023; }
+    .linha-configurada {
+      display: flex; justify-content: space-between; align-items: center;
+      background: #f7f7f8; border-radius: 8px; padding: 8px 10px; margin-top: 6px; font-size: 13px;
+    }
+    .linha-configurada .remover { color: #b3261e; background: none; border: none; cursor: pointer; font-size: 13px; }
+
+    .grade-categorias {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 4px 0;
+    }
+    .tile-categoria {
+      background: #fff; border-radius: 14px; padding: 16px 10px; text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; border: none;
+    }
+    .tile-categoria .icone {
+      width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 8px;
+      object-fit: cover; display: block; background: #eaf4ec;
+    }
+    .tile-categoria .icone-fallback {
+      width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 8px;
+      display: flex; align-items: center; justify-content: center;
+      background: #eaf4ec; font-size: 24px; color: #1b5e20; font-weight: 700;
+    }
+    .tile-categoria .nome-categoria { font-weight: 600; font-size: 14px; }
+
+    .tela-categoria { display: none; }
+    .tela-categoria.ativa { display: block; }
+    .btn-voltar {
+      background: none; border: none; color: #1b5e20; font-weight: 600;
+      font-size: 15px; padding: 8px 0; cursor: pointer;
+    }
+
+    .item-icone {
+      width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+    }
+    .item-icone-fallback {
+      width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #eaf4ec; font-size: 20px;
+    }
+  </style>
+</head>
+<body class="cliente">
+  <div class="topbar">
+    <img class="logo-restaurante" src="/img/logo-pesqueiro.jpg" alt="Logo <%= nomeRestaurante %>">
+    <div class="topbar-textos">
+      <div class="topbar-nome"><%= nomeRestaurante %></div>
+      <div class="topbar-mesa"><%= mesa.nome %></div>
+    </div>
+  </div>
+
+  <div class="container" id="app">
+
+    <div id="tela-home">
+      <% if (categorias.length === 0) { %>
+        <p>Nenhum item disponível no momento.</p>
+      <% } else { %>
+        <div class="grade-categorias">
+          <% categorias.forEach(cat => { %>
+            <button type="button" class="tile-categoria" data-abrir-categoria="<%= cat.id %>">
+              <% if (cat.imagem) { %>
+                <img class="icone" src="<%= cat.imagem %>" alt="<%= cat.nome %>">
+              <% } else { %>
+                <div class="icone-fallback"><%= cat.nome.charAt(0).toUpperCase() %></div>
+              <% } %>
+              <div class="nome-categoria"><%= cat.nome %></div>
+            </button>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <% categorias.forEach(cat => { %>
+      <div class="tela-categoria" data-categoria="<%= cat.id %>">
+        <button type="button" class="btn-voltar" data-voltar-home>&larr; Todas as categorias</button>
+        <h3><%= cat.nome %></h3>
+
+        <% cat.itens.forEach(item => { %>
+          <div class="card" data-item-id="<%= item.id %>">
+            <div class="item-row">
+              <% if (item.imagem) { %>
+                <img class="item-icone" src="<%= item.imagem %>" alt="<%= item.nome %>">
+              <% } else { %>
+                <div class="item-icone-fallback">🥤</div>
+              <% } %>
+              <div class="item-info">
+                <div class="item-nome"><%= item.nome %></div>
+                <% if (item.descricao) { %><div class="item-desc"><%= item.descricao %></div><% } %>
+                <div class="item-preco">R$ <%= item.preco.toFixed(2).replace('.', ',') %></div>
+              </div>
+
+              <% if (item.grupos.length === 0) { %>
+                <div class="qtd-control">
+                  <button type="button" class="qtd-btn btn-menos">−</button>
+                  <span class="qtd-valor">0</span>
+                  <button type="button" class="qtd-btn btn-mais">+</button>
+                </div>
+              <% } else { %>
+                <button type="button" class="btn-secundario btn-abrir-modal">Adicionar</button>
+              <% } %>
+            </div>
+
+            <% if (item.grupos.length > 0) { %>
+              <div class="linhas-configuradas"></div>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    <% }) %>
+
+  </div>
+
+  <div class="footer-bar">
+    <button class="btn-primario" id="btn-enviar" disabled>Fazer pedido</button>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box">
+      <h3 id="modal-titulo"></h3>
+      <div id="modal-grupos"></div>
+      <label>Observação (opcional)</label>
+      <input type="text" id="modal-observacao" placeholder="Ex: sem canudo">
+      <div class="qtd-control" style="justify-content:center; margin: 12px 0;">
+        <button type="button" class="qtd-btn" id="modal-qtd-menos">−</button>
+        <span class="qtd-valor" id="modal-qtd-valor">1</span>
+        <button type="button" class="qtd-btn" id="modal-qtd-mais">+</button>
+      </div>
+      <button class="btn-primario" id="modal-confirmar">Adicionar ao pedido</button>
+      <button class="btn-secundario" style="width:100%; margin-top:8px;" id="modal-cancelar">Cancelar</button>
+    </div>
+  </div>
+
+  <script>
+    const token = "<%= mesa.token %>";
+    const itensComOpcoes = <%- JSON.stringify(categorias.flatMap(c => c.itens).filter(i => i.grupos.length > 0)) %>;
+    const itensPorId = {};
+    itensComOpcoes.forEach(it => (itensPorId[it.id] = it));
+
+    const simpleCarrinho = {};
+    const opcoesCarrinho = [];
+    let uidSeq = 1;
+
+    document.querySelectorAll('[data-abrir-categoria]').forEach(tile => {
+      tile.addEventListener('click', () => {
+        document.getElementById('tela-home').style.display = 'none';
+        document.querySelectorAll('.tela-categoria').forEach(t => t.classList.remove('ativa'));
+        const alvo = document.querySelector(`.tela-categoria[data-categoria="${tile.dataset.abrirCategoria}"]`);
+        if (alvo) alvo.classList.add('ativa');
+        window.scrollTo(0, 0);
+      });
+    });
+
+    document.querySelectorAll('[data-voltar-home]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tela-categoria').forEach(t => t.classList.remove('ativa'));
+        document.getElementById('tela-home').style.display = '';
+        window.scrollTo(0, 0);
+      });
+    });
+
+    function totalItens() {
+      const totalSimples = Object.values(simpleCarrinho).reduce((a, b) => a + b, 0);
+      const totalOpcoes = opcoesCarrinho.reduce((a, l) => a + l.quantidade, 0);
+      return totalSimples + totalOpcoes;
+    }
+
+    function atualizarBotaoEnviar() {
+      const total = totalItens();
+      const btn = document.getElementById('btn-enviar');
+      btn.disabled = total === 0;
+      btn.textContent = total === 0 ? 'Fazer pedido' : `Fazer pedido (${total} ${total === 1 ? 'item' : 'itens'})`;
+    }
+
+    document.querySelectorAll('[data-item-id]').forEach(card => {
+      const itemId = card.dataset.itemId;
+      if (itensPorId[itemId]) return;
+      const valorEl = card.querySelector('.qtd-valor');
+      if (!valorEl) return;
+      card.querySelector('.btn-mais').addEventListener('click', () => {
+        simpleCarrinho[itemId] = (simpleCarrinho[itemId] || 0) + 1;
+        valorEl.textContent = simpleCarrinho[itemId];
+        atualizarBotaoEnviar();
+      });
+      card.querySelector('.btn-menos').addEventListener('click', () => {
+        if (!simpleCarrinho[itemId]) return;
+        simpleCarrinho[itemId] = Math.max(0, simpleCarrinho[itemId] - 1);
+        valorEl.textContent = simpleCarrinho[itemId];
+        atualizarBotaoEnviar();
+      });
+    });
+
+    const overlay = document.getElementById('modal-overlay');
+    let itemAtual = null;
+    let modalQtd = 1;
+
+    document.querySelectorAll('.btn-abrir-modal').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const card = btn.closest('[data-item-id]');
+        itemAtual = itensPorId[card.dataset.itemId];
+        abrirModal();
+      });
+    });
+
+    function abrirModal() {
+      modalQtd = 1;
+      document.getElementById('modal-qtd-valor').textContent = modalQtd;
+      document.getElementById('modal-titulo').textContent = itemAtual.nome;
+      document.getElementById('modal-observacao').value = '';
+
+      const cont = document.getElementById('modal-grupos');
+      cont.innerHTML = '';
+
+      itemAtual.grupos.forEach(g => {
+        const div = document.createElement('div');
+        div.className = 'grupo-opcao';
+        div.dataset.grupoId = g.id;
+        div.dataset.tipo = g.tipo;
+
+        const titulo = document.createElement('div');
+        titulo.className = 'grupo-opcao-titulo';
+        titulo.textContent = g.nome + ' ';
+        if (g.obrigatorio) {
+          const span = document.createElement('span');
+          span.className = 'grupo-opcao-obrigatorio';
+          span.textContent = '(obrigatório)';
+          titulo.appendChild(span);
+        }
+        div.appendChild(titulo);
+
+        if (g.tipo === 'quantidade') {
+          const linha = document.createElement('div');
+          linha.className = 'qtd-control';
+          linha.innerHTML = `
+            <button type="button" class="qtd-btn grupo-menos">−</button>
+            <span class="qtd-valor grupo-valor">${g.qtd_min}</span>
+            <button type="button" class="qtd-btn grupo-mais">+</button>
+          `;
+          div.appendChild(linha);
+          const valorEl = linha.querySelector('.grupo-valor');
+          linha.querySelector('.grupo-mais').addEventListener('click', () => {
+            const v = Math.min(g.qtd_max, parseInt(valorEl.textContent, 10) + 1);
+            valorEl.textContent = v;
+          });
+          linha.querySelector('.grupo-menos').addEventListener('click', () => {
+            const v = Math.max(g.qtd_min, parseInt(valorEl.textContent, 10) - 1);
+            valorEl.textContent = v;
+          });
+        } else {
+          const inputType = g.tipo === 'multiple' ? 'checkbox' : 'radio';
+          g.valores.forEach(v => {
+            const linha = document.createElement('div');
+            linha.className = 'opcao-valor-linha';
+            const inputId = `opt-${g.id}-${v.id}`;
+            linha.innerHTML = `
+              <input type="${inputType}" name="grupo-${g.id}" id="${inputId}" value="${v.id}" style="width:auto; margin:0;">
+              <label for="${inputId}">${v.nome}</label>
+            `;
+            div.appendChild(linha);
+          });
+        }
+
+        cont.appendChild(div);
+      });
+
+      overlay.classList.add('aberto');
+    }
+
+    document.getElementById('modal-cancelar').addEventListener('click', () => overlay.classList.remove('aberto'));
+    document.getElementById('modal-qtd-mais').addEventListener('click', () => {
+      modalQtd++;
+      document.getElementById('modal-qtd-valor').textContent = modalQtd;
+    });
+    document.getElementById('modal-qtd-menos').addEventListener('click', () => {
+      modalQtd = Math.max(1, modalQtd - 1);
+      document.getElementById('modal-qtd-valor').textContent = modalQtd;
+    });
+
+    document.getElementById('modal-confirmar').addEventListener('click', () => {
+      const opcoesSelecionadas = {};
+      const textoPartes = [];
+      let faltaObrigatorio = null;
+
+      document.querySelectorAll('#modal-grupos .grupo-opcao').forEach(div => {
+        const grupoId = div.dataset.grupoId;
+        const tipo = div.dataset.tipo;
+        const grupoInfo = itemAtual.grupos.find(g => String(g.id) === grupoId);
+
+        if (tipo === 'quantidade') {
+          const valor = parseInt(div.querySelector('.grupo-valor').textContent, 10);
+          opcoesSelecionadas[grupoId] = valor;
+          if (grupoInfo.obrigatorio && valor <= 0) faltaObrigatorio = grupoInfo.nome;
+          if (valor > 0) textoPartes.push(`${grupoInfo.nome}: ${valor}`);
+        } else if (tipo === 'multiple') {
+          const marcados = Array.from(div.querySelectorAll('input:checked')).map(i => i.value);
+          opcoesSelecionadas[grupoId] = marcados;
+          if (grupoInfo.obrigatorio && marcados.length === 0) faltaObrigatorio = grupoInfo.nome;
+          if (marcados.length > 0) {
+            const nomes = marcados.map(id => grupoInfo.valores.find(v => String(v.id) === id).nome);
+            textoPartes.push(`${grupoInfo.nome}: ${nomes.join(', ')}`);
+          }
+        } else {
+          const marcado = div.querySelector('input:checked');
+          if (grupoInfo.obrigatorio && !marcado) faltaObrigatorio = grupoInfo.nome;
+          if (marcado) {
+            opcoesSelecionadas[grupoId] = marcado.value;
+            const nomeVal = grupoInfo.valores.find(v => String(v.id) === marcado.value).nome;
+            textoPartes.push(`${grupoInfo.nome}: ${nomeVal}`);
+          }
+        }
+      });
+
+      if (faltaObrigatorio) {
+        alert(`Escolha uma opção em "${faltaObrigatorio}" antes de continuar.`);
+        return;
+      }
+
+      const observacao = document.getElementById('modal-observacao').value.trim();
+
+      opcoesCarrinho.push({
+        uid: uidSeq++,
+        item_id: itemAtual.id,
+        nome_item: itemAtual.nome,
+        quantidade: modalQtd,
+        opcoes: opcoesSelecionadas,
+        opcoesTextoDisplay: textoPartes.join(' | '),
+        observacao
+      });
+
+      renderizarLinhasConfiguradas(itemAtual.id);
+      overlay.classList.remove('aberto');
+      atualizarBotaoEnviar();
+    });
+
+    function renderizarLinhasConfiguradas(itemId) {
+      const card = document.querySelector(`[data-item-id="${itemId}"]`);
+      const cont = card.querySelector('.linhas-configuradas');
+      cont.innerHTML = '';
+      opcoesCarrinho
+        .filter(l => l.item_id === itemId)
+        .forEach(l => {
+          const div = document.createElement('div');
+          div.className = 'linha-configurada';
+          div.innerHTML = `
+            <span>${l.quantidade}x ${l.opcoesTextoDisplay || 'sem opções'}${l.observacao ? ' — ' + l.observacao : ''}</span>
+            <button type="button" class="remover">Remover</button>
+          `;
+          div.querySelector('.remover').addEventListener('click', () => {
+            const idx = opcoesCarrinho.findIndex(x => x.uid === l.uid);
+            if (idx >= 0) opcoesCarrinho.splice(idx, 1);
+            renderizarLinhasConfiguradas(itemId);
+            atualizarBotaoEnviar();
+          });
+          cont.appendChild(div);
+        });
+    }
+
+    document.getElementById('btn-enviar').addEventListener('click', async () => {
+      const itens = [];
+
+      Object.entries(simpleCarrinho).forEach(([item_id, quantidade]) => {
+        if (quantidade > 0) itens.push({ item_id: parseInt(item_id, 10), quantidade });
+      });
+
+      opcoesCarrinho.forEach(l => {
+        itens.push({
+          item_id: l.item_id,
+          quantidade: l.quantidade,
+          opcoes: l.opcoes,
+          observacao: l.observacao
+        });
+      });
+
+      if (itens.length === 0) return;
+
+      const btn = document.getElementById('btn-enviar');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      try {
+        const resp = await fetch(`/pedido/${token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itens })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          document.getElementById('app').innerHTML = `
+            <div class="card" style="text-align:center; padding: 32px 16px;">
+              <h2>Pedido enviado! ✅</h2>
+              <p>Seu pedido (nº ${data.pedidoId}) foi enviado ao bar.</p>
+              ${data.avisoImpressao ? `<p style="color:#b3261e">${data.avisoImpressao}</p>` : '<p>Aguarde, o garçom levará até a sua mesa.</p>'}
+            </div>`;
+          document.querySelector('.footer-bar').style.display = 'none';
+        } else {
+          alert(data.erro || 'Não foi possível enviar o pedido.');
+          btn.disabled = false;
+          atualizarBotaoEnviar();
+        }
+      } catch (e) {
+        alert('Erro de conexão. Verifique o wifi e tente novamente.');
+        btn.disabled = false;
+        atualizarBotaoEnviar();
+      }
+    });
+  </script>
+</body>
+</html>

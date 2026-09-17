@@ -1,0 +1,69 @@
+/* Identidade visual do Pesqueiro São José - aplicado só no cardápio do cliente */
+
+body.cliente {
+  background: linear-gradient(180deg, #eaf4ec 0%, #f7faf5 35%, #ffffff 100%);
+  min-height: 100vh;
+}
+
+body.cliente .topbar {
+  background: linear-gradient(90deg, #1b5e20, #2e7d32);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+}
+
+body.cliente .topbar img.logo-restaurante {
+  height: 38px;
+  width: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.85);
+  flex-shrink: 0;
+}
+
+body.cliente .topbar .topbar-textos {
+  line-height: 1.2;
+}
+
+body.cliente .topbar .topbar-nome {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+body.cliente .topbar .topbar-mesa {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+body.cliente .item-preco {
+  color: #1b5e20;
+  font-weight: 700;
+}
+
+body.cliente .card {
+  border: 1px solid #e3ece3;
+}
+
+body.cliente .qtd-btn {
+  border-color: #2e7d32;
+  color: #1b5e20;
+}
+
+body.cliente .btn-primario,
+body.cliente #modal-confirmar {
+  background: #c62828;
+}
+
+body.cliente .btn-primario:disabled {
+  background: #c62828;
+  opacity: 0.4;
+}
+
+body.cliente .footer-bar {
+  border-top: 1px solid #e3ece3;
+}
+
+body.cliente h3 {
+  color: #1b5e20;
+}

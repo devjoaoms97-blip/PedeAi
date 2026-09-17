@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <nav class="admin-nav">
+      <a href="/admin">Dashboard</a>
+      <a href="/admin/mesas">Mesas</a>
+      <a href="/admin/cardapio">Cardápio</a>
+      <a href="/admin/pedidos">Pedidos</a>
+      <a href="/admin/config">Configuração</a>
+      <form method="POST" action="/admin/logout" style="display:inline">
+        <button type="submit" style="background:none;border:none;color:#fff;opacity:0.85;cursor:pointer;font-size:14px;">Sair</button>
+      </form>
+    </nav>
+  </div>
+  <div class="admin-container">
+    <h2>Visão geral</h2>
+    <% if (pedidosComErro > 0) { %>
+      <div class="card" style="border-left: 4px solid #d33;">
+        ⚠️ <%= pedidosComErro %> pedido(s) com erro de impressão. Veja em <a href="/admin/pedidos">Pedidos</a>.
+      </div>
+    <% } %>
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+      <div class="card" style="flex:1; min-width:140px;">
+        <div class="item-desc">Mesas ativas</div>
+        <h2><%= totalMesas %></h2>
+      </div>
+      <div class="card" style="flex:1; min-width:140px;">
+        <div class="item-desc">Itens no cardápio</div>
+        <h2><%= totalItens %></h2>
+      </div>
+      <div class="card" style="flex:1; min-width:140px;">
+        <div class="item-desc">Pedidos hoje</div>
+        <h2><%= pedidosHoje %></h2>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

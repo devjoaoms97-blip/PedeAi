@@ -1,0 +1,23 @@
+{
+  "name": "restaurante-autoatendimento",
+  "version": "1.0.0",
+  "description": "Cardapio digital via QR code na mesa, com impressao automatica no bar",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "multer": "^2.4.0",
+    "nanoid": "^3.3.7",
+    "node-thermal-printer": "^4.4.4",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.4"
+  }
+}

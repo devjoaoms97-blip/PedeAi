@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Opções de <%= item.nome %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <nav class="admin-nav">
+      <a href="/admin">Dashboard</a>
+      <a href="/admin/mesas">Mesas</a>
+      <a href="/admin/cardapio">Cardápio</a>
+      <a href="/admin/pedidos">Pedidos</a>
+      <a href="/admin/config">Configuração</a>
+      <form method="POST" action="/admin/logout" style="display:inline">
+        <button type="submit" style="background:none;border:none;color:#fff;opacity:0.85;cursor:pointer;font-size:14px;">Sair</button>
+      </form>
+    </nav>
+  </div>
+  <div class="admin-container">
+    <p><a href="/admin/cardapio">&larr; Voltar ao cardápio</a></p>
+    <h2>Opções de: <%= item.nome %></h2>
+    <p class="item-desc">
+      Configure aqui as escolhas que o cliente vai ver ao pedir este item
+      (ex: "Copos", "Com limão e gelo"). Se não cadastrar nada, o item aparece
+      normal, sem etapa extra.
+    </p>
+
+    <div class="card">
+      <h3>Novo grupo de opção</h3>
+      <form method="POST" action="/admin/cardapio/itens/<%= item.id %>/opcoes/novo-grupo">
+        <label>Nome do grupo (o que o cliente vê como pergunta)</label>
+        <input type="text" name="nome" placeholder="Ex: Acompanhamento, Quantos copos?" required>
+
+        <label>Tipo</label>
+        <select name="tipo">
+          <option value="single">Escolha única (rádio) — ex: com limão / só gelo / sem nada</option>
+          <option value="multiple">Múltipla escolha (checkbox) — pode marcar mais de uma</option>
+          <option value="quantidade">Quantidade (contador numérico) — ex: quantos copos</option>
+        </select>
+
+        <label style="display:flex; align-items:center; gap:6px;">
+          <input type="checkbox" name="obrigatorio" value="1" style="width:auto; margin:0;">
+          Obrigatório (cliente precisa escolher antes de adicionar ao carrinho)
+        </label>
+
+        <div class="form-inline" style="margin-top:10px;">
+          <div>
+            <label>Qtd. mínima (só p/ tipo "Quantidade")</label>
+            <input type="number" name="qtd_min" value="0" min="0">
+          </div>
+          <div>
+            <label>Qtd. máxima (só p/ tipo "Quantidade")</label>
+            <input type="number" name="qtd_max" value="10" min="1">
+          </div>
+        </div>
+
+        <button class="btn-primario" type="submit">Adicionar grupo</button>
+      </form>
+    </div>
+
+    <% grupos.forEach(g => { %>
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong><%= g.nome %></strong>
+            <span class="item-desc">
+              (<%= g.tipo === 'single' ? 'escolha única' : g.tipo === 'multiple' ? 'múltipla escolha' : `quantidade ${g.qtd_min}–${g.qtd_max}` %><%= g.obrigatorio ? ', obrigatório' : '' %>)
+            </span>
+          </div>
+          <form method="POST" action="/admin/cardapio/grupos/<%= g.id %>/excluir" onsubmit="return confirm('Excluir este grupo de opção e todos os valores dele?');">
+            <button class="btn-secundario btn-mini btn-perigo" type="submit">Excluir grupo</button>
+          </form>
+        </div>
+
+        <% if (g.tipo !== 'quantidade') { %>
+          <table>
+            <% g.valores.forEach(v => { %>
+              <tr>
+                <td><%= v.nome %></td>
+                <td style="text-align:right;">
+                  <form method="POST" action="/admin/cardapio/valores/<%= v.id %>/excluir">
+                    <button class="btn-secundario btn-mini" type="submit">Remover</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </table>
+          <form method="POST" action="/admin/cardapio/grupos/<%= g.id %>/novo-valor" class="form-inline" style="margin-top:8px;">
+            <div><input type="text" name="nome" placeholder="Ex: Só gelo, Com limão..." required></div>
+            <button class="btn-secundario" type="submit">Adicionar opção</button>
+          </form>
+        <% } else { %>
+          <p class="item-desc">Tipo "quantidade" não precisa de valores — o cliente vai ver um contador de <%= g.qtd_min %> a <%= g.qtd_max %>.</p>
+        <% } %>
+      </div>
+    <% }) %>
+
+    <% if (grupos.length === 0) { %>
+      <p>Nenhum grupo de opção configurado ainda para este item.</p>
+    <% } %>
+  </div>
+</body>
+</html>

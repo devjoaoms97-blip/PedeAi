@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Login</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container" style="padding-top:60px;">
+    <div class="card">
+      <h2>Painel Admin</h2>
+      <% if (erro) { %><p style="color:#b3261e"><%= erro %></p><% } %>
+      <form method="POST" action="/admin/login">
+        <label>Usuário</label>
+        <input type="text" name="usuario" required>
+        <label>Senha</label>
+        <input type="password" name="senha" required>
+        <button class="btn-primario" type="submit">Entrar</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

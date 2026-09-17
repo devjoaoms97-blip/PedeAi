@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Configuração</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <nav class="admin-nav">
+      <a href="/admin">Dashboard</a>
+      <a href="/admin/mesas">Mesas</a>
+      <a href="/admin/cardapio">Cardápio</a>
+      <a href="/admin/pedidos">Pedidos</a>
+      <a href="/admin/config">Configuração</a>
+      <form method="POST" action="/admin/logout" style="display:inline">
+        <button type="submit" style="background:none;border:none;color:#fff;opacity:0.85;cursor:pointer;font-size:14px;">Sair</button>
+      </form>
+    </nav>
+  </div>
+  <div class="admin-container">
+    <h2>Configuração</h2>
+    <% if (salvo) { %><div class="toast-sucesso">Configuração salva!</div><% } %>
+    <div class="card">
+      <form method="POST" action="/admin/config">
+        <label>Nome do restaurante (aparece no cardápio do cliente)</label>
+        <input type="text" name="nome_restaurante" value="<%= config.nome_restaurante %>">
+
+        <label>IP da impressora do bar (rede local)</label>
+        <input type="text" name="printer_ip" value="<%= config.printer_ip %>" placeholder="Ex: 192.168.0.50">
+
+        <label>Porta da impressora (padrão ESC/POS é 9100)</label>
+        <input type="text" name="printer_port" value="<%= config.printer_port %>">
+
+        <label>Endereço base deste servidor na rede (usado para gerar os QR codes das mesas)</label>
+        <input type="text" name="base_url" value="<%= config.base_url %>" placeholder="Ex: http://192.168.0.100:3000">
+
+        <button class="btn-primario" type="submit">Salvar</button>
+      </form>
+    </div>
+    <div class="card">
+      <strong>Como descobrir o IP da impressora:</strong>
+      <p>Na maioria das impressoras térmicas com rede (LAN), dá pra imprimir uma "página de teste/configuração de rede" segurando o botão de alimentação de papel ligando o equipamento, ou verificando o menu de rede se ela tiver display. O IP costuma aparecer nessa folha impressa.</p>
+      <strong>Como descobrir o IP deste computador (servidor):</strong>
+      <p>Windows: abra o Prompt de Comando e digite <code>ipconfig</code> — procure "Endereço IPv4". Linux/Mac: no terminal, digite <code>ip a</code> ou <code>ifconfig</code>.</p>
+    </div>
+  </div>
+</body>
+</html>
