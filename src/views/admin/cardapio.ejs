@@ -12,6 +12,7 @@
       <a href="/admin">Dashboard</a>
       <a href="/admin/mesas">Mesas</a>
       <a href="/admin/cardapio">Cardápio</a>
+      <a href="/admin/opcoes-padrao">Opções padrão</a>
       <a href="/admin/pedidos">Pedidos</a>
       <a href="/admin/config">Configuração</a>
       <form method="POST" action="/admin/logout" style="display:inline">
@@ -43,15 +44,25 @@
             <option value="<%= c.id %>"><%= c.nome %></option>
           <% }) %>
         </select>
-        <label>Nome do item</label>
-        <input type="text" name="nome" required>
-        <label>Descrição (opcional)</label>
-        <input type="text" name="descricao">
-        <label>Preço (R$)</label>
-        <input type="text" name="preco" placeholder="Ex: 9,90" required>
-        <label>Ícone (opcional, imagem quadrada)</label>
-        <input type="file" name="imagem" accept="image/*">
-        <button class="btn-primario" type="submit">Adicionar item</button>
+        <div class="form-inline">
+          <div>
+            <label>Nome do item</label>
+            <input type="text" name="nome" required>
+          </div>
+          <div>
+            <label>Descrição (opcional)</label>
+            <input type="text" name="descricao">
+          </div>
+          <div style="max-width:110px;">
+            <label>Preço (R$)</label>
+            <input type="text" name="preco" placeholder="Ex: 9,90" required>
+          </div>
+          <div>
+            <label>Ícone (opcional, imagem quadrada)</label>
+            <input type="file" name="imagem" accept="image/*">
+          </div>
+        </div>
+        <button class="btn-primario" style="width:auto; padding:10px 18px;" type="submit">Adicionar item</button>
       </form>
     </div>
 
@@ -75,30 +86,36 @@
       </div>
       <% itens.filter(i => i.categoria_id === cat.id).forEach(item => { %>
         <div class="card">
-          <form method="POST" action="/admin/cardapio/itens/<%= item.id %>/editar" enctype="multipart/form-data" class="form-inline">
-            <% if (item.imagem) { %>
-              <img src="<%= item.imagem %>" style="width:44px;height:44px;border-radius:8px;object-fit:cover;">
-            <% } %>
-            <div>
+          <form method="POST" action="/admin/cardapio/itens/<%= item.id %>/editar" enctype="multipart/form-data" class="linha-item-admin">
+            <div class="col-imagem">
+              <% if (item.imagem) { %>
+                <img src="<%= item.imagem %>" alt="<%= item.nome %>">
+              <% } else { %>
+                🥤
+              <% } %>
+            </div>
+            <div class="col-nome">
               <label>Nome</label>
               <input type="text" name="nome" value="<%= item.nome %>">
             </div>
-            <div>
+            <div class="col-descricao">
               <label>Descrição</label>
               <input type="text" name="descricao" value="<%= item.descricao %>">
             </div>
-            <div style="max-width:110px;">
+            <div class="col-preco">
               <label>Preço</label>
               <input type="text" name="preco" value="<%= item.preco.toFixed(2) %>">
             </div>
-            <div>
+            <div class="col-arquivo">
               <label>Trocar ícone</label>
               <input type="file" name="imagem" accept="image/*">
             </div>
-            <button class="btn-secundario" type="submit">Salvar</button>
-            <% if (item.imagem) { %>
-              <button class="btn-secundario btn-mini btn-perigo" type="submit" formaction="/admin/cardapio/itens/<%= item.id %>/remover-imagem" formnovalidate>Remover ícone</button>
-            <% } %>
+            <div class="col-acoes">
+              <button class="btn-secundario" type="submit">Salvar</button>
+              <% if (item.imagem) { %>
+                <button class="btn-secundario btn-mini btn-perigo" type="submit" formaction="/admin/cardapio/itens/<%= item.id %>/remover-imagem" formnovalidate>Remover ícone</button>
+              <% } %>
+            </div>
           </form>
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span class="badge <%= item.disponivel ? 'badge-ok' : 'badge-erro' %>">

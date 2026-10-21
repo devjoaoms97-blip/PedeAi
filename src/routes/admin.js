@@ -221,7 +221,8 @@ router.get('/cardapio/itens/:id/opcoes', (req, res) => {
       ...g,
       valores: db.prepare('SELECT * FROM opcao_valores WHERE grupo_id = ? ORDER BY ordem, id').all(g.id)
     }));
-  res.render('admin/opcoes-item', { item, grupos });
+  const templates = db.prepare('SELECT * FROM opcao_templates ORDER BY ordem, id').all();
+  res.render('admin/opcoes-item', { item, grupos, templates });
 });
 
 router.post('/cardapio/itens/:id/opcoes/novo-grupo', (req, res) => {
@@ -268,6 +269,78 @@ router.post('/cardapio/valores/:valorId/excluir', (req, res) => {
     return res.redirect(`/admin/cardapio/itens/${grupo.item_id}/opcoes`);
   }
   res.redirect('/admin/cardapio');
+});
+
+// Aplica um modelo de "opção padrão" num item: copia o grupo (e os valores)
+// do modelo pra dentro do item. Depois disso o grupo é independente — editar
+// o modelo não muda o que já foi aplicado, e editar num item não muda os outros.
+router.post('/cardapio/itens/:id/opcoes/aplicar-padrao', (req, res) => {
+  const item = db.prepare('SELECT * FROM itens WHERE id = ?').get(req.params.id);
+  const template = db.prepare('SELECT * FROM opcao_templates WHERE id = ?').get(req.body.template_id);
+  if (item && template) {
+    const grupoId = db
+      .prepare(
+        `INSERT INTO opcao_grupos (item_id, nome, tipo, obrigatorio, qtd_min, qtd_max)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .run(item.id, template.nome, template.tipo, template.obrigatorio, template.qtd_min, template.qtd_max)
+      .lastInsertRowid;
+
+    const valoresTemplate = db
+      .prepare('SELECT * FROM opcao_template_valores WHERE template_id = ? ORDER BY ordem, id')
+      .all(template.id);
+    const insertValor = db.prepare('INSERT INTO opcao_valores (grupo_id, nome, ordem) VALUES (?, ?, ?)');
+    valoresTemplate.forEach((v, i) => insertValor.run(grupoId, v.nome, i));
+  }
+  res.redirect(`/admin/cardapio/itens/${req.params.id}/opcoes`);
+});
+
+// ---------- Opções padrão (modelos reutilizáveis) ----------
+router.get('/opcoes-padrao', (req, res) => {
+  const templates = db
+    .prepare('SELECT * FROM opcao_templates ORDER BY ordem, id')
+    .all()
+    .map(t => ({
+      ...t,
+      valores: db.prepare('SELECT * FROM opcao_template_valores WHERE template_id = ? ORDER BY ordem, id').all(t.id)
+    }));
+  res.render('admin/opcoes-padrao', { templates });
+});
+
+router.post('/opcoes-padrao/novo', (req, res) => {
+  const { nome, tipo, obrigatorio, qtd_min, qtd_max } = req.body;
+  if (!nome) return res.redirect('/admin/opcoes-padrao');
+  db.prepare(
+    `INSERT INTO opcao_templates (nome, tipo, obrigatorio, qtd_min, qtd_max)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    nome.trim(),
+    ['single', 'multiple', 'quantidade'].includes(tipo) ? tipo : 'single',
+    obrigatorio ? 1 : 0,
+    parseInt(qtd_min, 10) || 0,
+    parseInt(qtd_max, 10) || 10
+  );
+  res.redirect('/admin/opcoes-padrao');
+});
+
+router.post('/opcoes-padrao/:id/excluir', (req, res) => {
+  db.prepare('DELETE FROM opcao_template_valores WHERE template_id = ?').run(req.params.id);
+  db.prepare('DELETE FROM opcao_templates WHERE id = ?').run(req.params.id);
+  res.redirect('/admin/opcoes-padrao');
+});
+
+router.post('/opcoes-padrao/:id/novo-valor', (req, res) => {
+  const nome = (req.body.nome || '').trim();
+  const template = db.prepare('SELECT * FROM opcao_templates WHERE id = ?').get(req.params.id);
+  if (template && nome) {
+    db.prepare('INSERT INTO opcao_template_valores (template_id, nome) VALUES (?, ?)').run(template.id, nome);
+  }
+  res.redirect('/admin/opcoes-padrao');
+});
+
+router.post('/opcoes-padrao/valores/:valorId/excluir', (req, res) => {
+  db.prepare('DELETE FROM opcao_template_valores WHERE id = ?').run(req.params.valorId);
+  res.redirect('/admin/opcoes-padrao');
 });
 
 // ---------- Pedidos (histórico + reimpressão manual) ----------

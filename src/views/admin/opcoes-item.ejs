@@ -12,6 +12,7 @@
       <a href="/admin">Dashboard</a>
       <a href="/admin/mesas">Mesas</a>
       <a href="/admin/cardapio">Cardápio</a>
+      <a href="/admin/opcoes-padrao">Opções padrão</a>
       <a href="/admin/pedidos">Pedidos</a>
       <a href="/admin/config">Configuração</a>
       <form method="POST" action="/admin/logout" style="display:inline">
@@ -27,6 +28,27 @@
       (ex: "Copos", "Com limão e gelo"). Se não cadastrar nada, o item aparece
       normal, sem etapa extra.
     </p>
+
+    <% if (templates.length > 0) { %>
+      <div class="card">
+        <h3>Usar opção padrão</h3>
+        <p class="item-desc">Aplica uma cópia de um modelo pronto neste item (você pode editar depois, só nele).</p>
+        <form method="POST" action="/admin/cardapio/itens/<%= item.id %>/opcoes/aplicar-padrao" class="form-inline">
+          <div>
+            <select name="template_id" required>
+              <% templates.forEach(t => { %>
+                <option value="<%= t.id %>"><%= t.nome %></option>
+              <% }) %>
+            </select>
+          </div>
+          <button class="btn-secundario" type="submit">Aplicar neste item</button>
+        </form>
+      </div>
+    <% } else { %>
+      <p class="item-desc">
+        Nenhum modelo criado ainda. <a href="/admin/opcoes-padrao">Crie opções padrão aqui</a> pra reaproveitar em vários itens.
+      </p>
+    <% } %>
 
     <div class="card">
       <h3>Novo grupo de opção</h3>

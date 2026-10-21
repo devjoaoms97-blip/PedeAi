@@ -59,6 +59,26 @@ CREATE TABLE IF NOT EXISTS opcao_valores (
   ordem INTEGER NOT NULL DEFAULT 0
 );
 
+-- "Opções padrão": modelos reutilizáveis (ex: "Quantos copos?", "Limão/gelo?")
+-- que o admin cria uma vez e aplica em vários itens (cada aplicação copia o
+-- grupo pro item, então depois pode ajustar cada item sem afetar os outros).
+CREATE TABLE IF NOT EXISTS opcao_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nome TEXT NOT NULL,
+  tipo TEXT NOT NULL DEFAULT 'single',
+  obrigatorio INTEGER NOT NULL DEFAULT 0,
+  qtd_min INTEGER NOT NULL DEFAULT 0,
+  qtd_max INTEGER NOT NULL DEFAULT 10,
+  ordem INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS opcao_template_valores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  template_id INTEGER NOT NULL REFERENCES opcao_templates(id),
+  nome TEXT NOT NULL,
+  ordem INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS pedidos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   mesa_id INTEGER NOT NULL REFERENCES mesas(id),

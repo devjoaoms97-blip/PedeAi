@@ -59,11 +59,46 @@ th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e2e2; font-
 
 input[type=text], input[type=number], input[type=password], textarea, select {
   width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;
-  font-size: 14px; margin-bottom: 10px;
+  font-size: 14px; margin-bottom: 10px; box-sizing: border-box;
+}
+input[type=file] {
+  width: 100%; font-size: 12px; padding: 6px 0; margin-bottom: 10px; box-sizing: border-box;
 }
 label { font-size: 13px; color: #555; display: block; margin-bottom: 4px; }
 .form-inline { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
 .form-inline > div { flex: 1; min-width: 120px; }
+
+/* Linha de edição de item/categoria no admin: colunas fixas, iguais em todas
+   as linhas mesmo quando o item não tem ícone (placeholder ocupa o lugar). */
+.linha-item-admin {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1.3fr) minmax(0, 1.5fr) 100px minmax(0, 1.2fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+.linha-item-admin .col-imagem {
+  width: 44px; height: 44px; border-radius: 8px; overflow: hidden;
+  background: #eee; display: flex; align-items: center; justify-content: center;
+  color: #aaa; font-size: 18px; margin-bottom: 10px;
+}
+.linha-item-admin .col-imagem img { width: 100%; height: 100%; object-fit: cover; }
+.linha-item-admin .col-acoes { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; }
+@media (max-width: 720px) {
+  .linha-item-admin {
+    grid-template-columns: 44px 1fr;
+    grid-template-areas:
+      "img nome"
+      "desc desc"
+      "preco arquivo"
+      "acoes acoes";
+  }
+  .linha-item-admin .col-imagem { grid-area: img; }
+  .linha-item-admin .col-nome { grid-area: nome; }
+  .linha-item-admin .col-descricao { grid-area: desc; }
+  .linha-item-admin .col-preco { grid-area: preco; }
+  .linha-item-admin .col-arquivo { grid-area: arquivo; }
+  .linha-item-admin .col-acoes { grid-area: acoes; }
+}
 
 nav.admin-nav a {
   color: #fff; text-decoration: none; margin-right: 16px; font-size: 14px; opacity: 0.85;

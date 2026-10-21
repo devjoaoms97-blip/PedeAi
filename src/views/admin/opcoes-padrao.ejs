@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Opções padrão</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="topbar">
+    <nav class="admin-nav">
+      <a href="/admin">Dashboard</a>
+      <a href="/admin/mesas">Mesas</a>
+      <a href="/admin/cardapio">Cardápio</a>
+      <a href="/admin/opcoes-padrao">Opções padrão</a>
+      <a href="/admin/pedidos">Pedidos</a>
+      <a href="/admin/config">Configuração</a>
+      <form method="POST" action="/admin/logout" style="display:inline">
+        <button type="submit" style="background:none;border:none;color:#fff;opacity:0.85;cursor:pointer;font-size:14px;">Sair</button>
+      </form>
+    </nav>
+  </div>
+  <div class="admin-container">
+    <h2>Opções padrão</h2>
+    <p class="item-desc">
+      Crie aqui perguntas prontas (ex: "Quantos copos?", "Limão/gelo?") pra não
+      precisar montar do zero em cada item. Depois, na página de opções de
+      qualquer item do cardápio, use "Usar opção padrão" pra aplicar um destes
+      modelos nele — vai uma cópia pro item, que você ainda pode ajustar
+      individualmente sem afetar os outros itens.
+    </p>
+
+    <div class="card">
+      <h3>Novo modelo</h3>
+      <form method="POST" action="/admin/opcoes-padrao/novo">
+        <label>Nome (o que o cliente vê como pergunta)</label>
+        <input type="text" name="nome" placeholder="Ex: Quantos copos?, Limão/gelo" required>
+
+        <label>Tipo</label>
+        <select name="tipo">
+          <option value="single">Escolha única (rádio) — ex: com limão / só gelo / sem nada</option>
+          <option value="multiple">Múltipla escolha (checkbox) — pode marcar mais de uma</option>
+          <option value="quantidade">Quantidade (contador numérico) — ex: quantos copos</option>
+        </select>
+
+        <label style="display:flex; align-items:center; gap:6px;">
+          <input type="checkbox" name="obrigatorio" value="1" style="width:auto; margin:0;">
+          Obrigatório (cliente precisa escolher antes de adicionar ao carrinho)
+        </label>
+
+        <div class="form-inline" style="margin-top:10px;">
+          <div>
+            <label>Qtd. mínima (só p/ tipo "Quantidade")</label>
+            <input type="number" name="qtd_min" value="0" min="0">
+          </div>
+          <div>
+            <label>Qtd. máxima (só p/ tipo "Quantidade")</label>
+            <input type="number" name="qtd_max" value="10" min="1">
+          </div>
+        </div>
+
+        <button class="btn-primario" type="submit">Criar modelo</button>
+      </form>
+    </div>
+
+    <% templates.forEach(t => { %>
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong><%= t.nome %></strong>
+            <span class="item-desc">
+              (<%= t.tipo === 'single' ? 'escolha única' : t.tipo === 'multiple' ? 'múltipla escolha' : `quantidade ${t.qtd_min}–${t.qtd_max}` %><%= t.obrigatorio ? ', obrigatório' : '' %>)
+            </span>
+          </div>
+          <form method="POST" action="/admin/opcoes-padrao/<%= t.id %>/excluir" onsubmit="return confirm('Excluir este modelo? Isso não afeta itens que já usaram ele.');">
+            <button class="btn-secundario btn-mini btn-perigo" type="submit">Excluir modelo</button>
+          </form>
+        </div>
+
+        <% if (t.tipo !== 'quantidade') { %>
+          <table>
+            <% t.valores.forEach(v => { %>
+              <tr>
+                <td><%= v.nome %></td>
+                <td style="text-align:right;">
+                  <form method="POST" action="/admin/opcoes-padrao/valores/<%= v.id %>/excluir">
+                    <button class="btn-secundario btn-mini" type="submit">Remover</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </table>
+          <form method="POST" action="/admin/opcoes-padrao/<%= t.id %>/novo-valor" class="form-inline" style="margin-top:8px;">
+            <div><input type="text" name="nome" placeholder="Ex: Só gelo, Com limão..." required></div>
+            <button class="btn-secundario" type="submit">Adicionar opção</button>
+          </form>
+        <% } else { %>
+          <p class="item-desc">Tipo "quantidade" não precisa de valores — o cliente vai ver um contador de <%= t.qtd_min %> a <%= t.qtd_max %>.</p>
+        <% } %>
+      </div>
+    <% }) %>
+
+    <% if (templates.length === 0) { %>
+      <p>Nenhum modelo criado ainda.</p>
+    <% } %>
+  </div>
+</body>
+</html>

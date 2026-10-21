@@ -60,6 +60,31 @@
       display: flex; align-items: center; justify-content: center;
       background: #eaf4ec; font-size: 20px;
     }
+
+    .footer-bar { display: flex; gap: 8px; }
+    .footer-bar .btn-secundario { flex: 0 0 auto; white-space: nowrap; }
+    .footer-bar .btn-primario { flex: 1; }
+
+    .tela-carrinho { display: none; }
+    .tela-carrinho.aberta { display: block; }
+    .linha-carrinho {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 10px; padding: 10px 0; border-bottom: 1px solid #eee;
+    }
+    .linha-carrinho:last-child { border-bottom: none; }
+    .linha-carrinho-info { flex: 1; }
+    .linha-carrinho-nome { font-weight: 600; }
+    .linha-carrinho-detalhe { font-size: 12px; color: #666; margin-top: 2px; }
+    .linha-carrinho-valor { font-size: 13px; color: #444; margin-top: 4px; }
+    .linha-carrinho-acoes { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .linha-carrinho-remover {
+      color: #b3261e; background: none; border: none; cursor: pointer; font-size: 12px; padding: 0;
+    }
+    .carrinho-total {
+      display: flex; justify-content: space-between; font-weight: 700;
+      font-size: 17px; padding: 14px 0 4px;
+    }
+    .carrinho-vazio { text-align: center; color: #777; padding: 24px 0; }
   </style>
 </head>
 <body class="cliente">
@@ -130,9 +155,23 @@
       </div>
     <% }) %>
 
+    <div class="tela-carrinho" id="tela-carrinho">
+      <button type="button" class="btn-voltar" data-fechar-carrinho>&larr; Continuar escolhendo</button>
+      <h3>Seu carrinho</h3>
+      <div class="card" id="carrinho-linhas"></div>
+      <div class="carrinho-total">
+        <span>Total</span>
+        <span id="carrinho-total-valor">R$ 0,00</span>
+      </div>
+    </div>
+
   </div>
 
-  <div class="footer-bar">
+  <div class="footer-bar" id="footer-home">
+    <button class="btn-primario" id="btn-ver-carrinho" disabled>Ver carrinho</button>
+  </div>
+
+  <div class="footer-bar" id="footer-carrinho" style="display:none;">
     <button class="btn-primario" id="btn-enviar" disabled>Fazer pedido</button>
   </div>
 
@@ -157,6 +196,15 @@
     const itensComOpcoes = <%- JSON.stringify(categorias.flatMap(c => c.itens).filter(i => i.grupos.length > 0)) %>;
     const itensPorId = {};
     itensComOpcoes.forEach(it => (itensPorId[it.id] = it));
+
+    // Preço/nome de TODOS os itens (com ou sem opções), pra calcular o total do carrinho.
+    const todosItens = <%- JSON.stringify(categorias.flatMap(c => c.itens).map(i => ({ id: i.id, nome: i.nome, preco: i.preco }))) %>;
+    const todosItensPorId = {};
+    todosItens.forEach(it => (todosItensPorId[it.id] = it));
+
+    function formatarReais(valor) {
+      return 'R$ ' + valor.toFixed(2).replace('.', ',');
+    }
 
     const simpleCarrinho = {};
     const opcoesCarrinho = [];
@@ -186,11 +234,44 @@
       return totalSimples + totalOpcoes;
     }
 
+    function valorTotalCarrinho() {
+      let total = 0;
+      Object.entries(simpleCarrinho).forEach(([itemId, qtd]) => {
+        if (qtd > 0 && todosItensPorId[itemId]) total += todosItensPorId[itemId].preco * qtd;
+      });
+      opcoesCarrinho.forEach(l => {
+        const it = todosItensPorId[l.item_id];
+        if (it) total += it.preco * l.quantidade;
+      });
+      return total;
+    }
+
     function atualizarBotaoEnviar() {
       const total = totalItens();
-      const btn = document.getElementById('btn-enviar');
-      btn.disabled = total === 0;
-      btn.textContent = total === 0 ? 'Fazer pedido' : `Fazer pedido (${total} ${total === 1 ? 'item' : 'itens'})`;
+      const valor = valorTotalCarrinho();
+
+      const btnCarrinho = document.getElementById('btn-ver-carrinho');
+      btnCarrinho.disabled = total === 0;
+      btnCarrinho.textContent = total === 0
+        ? 'Ver carrinho'
+        : `Ver carrinho (${total} ${total === 1 ? 'item' : 'itens'}) · ${formatarReais(valor)}`;
+
+      const btnEnviar = document.getElementById('btn-enviar');
+      btnEnviar.disabled = total === 0;
+      btnEnviar.textContent = total === 0 ? 'Fazer pedido' : `Fazer pedido · ${formatarReais(valor)}`;
+
+      if (document.getElementById('tela-carrinho').classList.contains('aberta')) {
+        if (total === 0) fecharCarrinho();
+        else renderizarCarrinho();
+      }
+    }
+
+    function ajustarSimples(itemId, delta) {
+      simpleCarrinho[itemId] = Math.max(0, (simpleCarrinho[itemId] || 0) + delta);
+      const card = document.querySelector(`[data-item-id="${itemId}"]`);
+      const valorEl = card && card.querySelector('.qtd-valor');
+      if (valorEl) valorEl.textContent = simpleCarrinho[itemId];
+      atualizarBotaoEnviar();
     }
 
     document.querySelectorAll('[data-item-id]').forEach(card => {
@@ -198,17 +279,8 @@
       if (itensPorId[itemId]) return;
       const valorEl = card.querySelector('.qtd-valor');
       if (!valorEl) return;
-      card.querySelector('.btn-mais').addEventListener('click', () => {
-        simpleCarrinho[itemId] = (simpleCarrinho[itemId] || 0) + 1;
-        valorEl.textContent = simpleCarrinho[itemId];
-        atualizarBotaoEnviar();
-      });
-      card.querySelector('.btn-menos').addEventListener('click', () => {
-        if (!simpleCarrinho[itemId]) return;
-        simpleCarrinho[itemId] = Math.max(0, simpleCarrinho[itemId] - 1);
-        valorEl.textContent = simpleCarrinho[itemId];
-        atualizarBotaoEnviar();
-      });
+      card.querySelector('.btn-mais').addEventListener('click', () => ajustarSimples(itemId, 1));
+      card.querySelector('.btn-menos').addEventListener('click', () => ajustarSimples(itemId, -1));
     });
 
     const overlay = document.getElementById('modal-overlay');
@@ -353,6 +425,17 @@
       atualizarBotaoEnviar();
     });
 
+    function removerLinhaOpcao(uid) {
+      const linha = opcoesCarrinho.find(x => x.uid === uid);
+      const idx = opcoesCarrinho.findIndex(x => x.uid === uid);
+      if (idx >= 0) opcoesCarrinho.splice(idx, 1);
+      if (linha) {
+        const card = document.querySelector(`[data-item-id="${linha.item_id}"]`);
+        if (card) renderizarLinhasConfiguradas(linha.item_id);
+      }
+      atualizarBotaoEnviar();
+    }
+
     function renderizarLinhasConfiguradas(itemId) {
       const card = document.querySelector(`[data-item-id="${itemId}"]`);
       const cont = card.querySelector('.linhas-configuradas');
@@ -366,15 +449,87 @@
             <span>${l.quantidade}x ${l.opcoesTextoDisplay || 'sem opções'}${l.observacao ? ' — ' + l.observacao : ''}</span>
             <button type="button" class="remover">Remover</button>
           `;
-          div.querySelector('.remover').addEventListener('click', () => {
-            const idx = opcoesCarrinho.findIndex(x => x.uid === l.uid);
-            if (idx >= 0) opcoesCarrinho.splice(idx, 1);
-            renderizarLinhasConfiguradas(itemId);
-            atualizarBotaoEnviar();
-          });
+          div.querySelector('.remover').addEventListener('click', () => removerLinhaOpcao(l.uid));
           cont.appendChild(div);
         });
     }
+
+    // ---------- Tela do carrinho ----------
+    function abrirCarrinho() {
+      document.getElementById('tela-home').style.display = 'none';
+      document.querySelectorAll('.tela-categoria').forEach(t => t.classList.remove('ativa'));
+      document.getElementById('tela-carrinho').classList.add('aberta');
+      document.getElementById('footer-home').style.display = 'none';
+      document.getElementById('footer-carrinho').style.display = '';
+      renderizarCarrinho();
+      window.scrollTo(0, 0);
+    }
+
+    function fecharCarrinho() {
+      document.getElementById('tela-carrinho').classList.remove('aberta');
+      document.getElementById('tela-home').style.display = '';
+      document.getElementById('footer-carrinho').style.display = 'none';
+      document.getElementById('footer-home').style.display = '';
+      window.scrollTo(0, 0);
+    }
+
+    function renderizarCarrinho() {
+      const cont = document.getElementById('carrinho-linhas');
+      cont.innerHTML = '';
+
+      const linhas = [];
+      Object.entries(simpleCarrinho).forEach(([itemId, qtd]) => {
+        if (qtd > 0 && todosItensPorId[itemId]) {
+          linhas.push({ tipo: 'simples', itemId, qtd, item: todosItensPorId[itemId] });
+        }
+      });
+      opcoesCarrinho.forEach(l => {
+        const item = todosItensPorId[l.item_id];
+        if (item) linhas.push({ tipo: 'opcao', uid: l.uid, qtd: l.quantidade, item, linha: l });
+      });
+
+      if (linhas.length === 0) {
+        cont.innerHTML = '<div class="carrinho-vazio">Seu carrinho está vazio.</div>';
+        document.getElementById('carrinho-total-valor').textContent = formatarReais(0);
+        return;
+      }
+
+      linhas.forEach(l => {
+        const subtotal = l.item.preco * l.qtd;
+        const div = document.createElement('div');
+        div.className = 'linha-carrinho';
+        const detalhe = l.tipo === 'opcao'
+          ? [l.linha.opcoesTextoDisplay, l.linha.observacao].filter(Boolean).join(' — ')
+          : '';
+        div.innerHTML = `
+          <div class="linha-carrinho-info">
+            <div class="linha-carrinho-nome">${l.qtd}x ${l.item.nome}</div>
+            ${detalhe ? `<div class="linha-carrinho-detalhe">${detalhe}</div>` : ''}
+            <div class="linha-carrinho-valor">${formatarReais(subtotal)}</div>
+          </div>
+          <div class="linha-carrinho-acoes">
+            <button type="button" class="linha-carrinho-remover">Remover</button>
+          </div>
+        `;
+        div.querySelector('.linha-carrinho-remover').addEventListener('click', () => {
+          if (l.tipo === 'simples') {
+            simpleCarrinho[l.itemId] = 0;
+            const card = document.querySelector(`[data-item-id="${l.itemId}"]`);
+            const valorEl = card && card.querySelector('.qtd-valor');
+            if (valorEl) valorEl.textContent = 0;
+            atualizarBotaoEnviar();
+          } else {
+            removerLinhaOpcao(l.uid);
+          }
+        });
+        cont.appendChild(div);
+      });
+
+      document.getElementById('carrinho-total-valor').textContent = formatarReais(valorTotalCarrinho());
+    }
+
+    document.getElementById('btn-ver-carrinho').addEventListener('click', abrirCarrinho);
+    document.querySelectorAll('[data-fechar-carrinho]').forEach(btn => btn.addEventListener('click', fecharCarrinho));
 
     document.getElementById('btn-enviar').addEventListener('click', async () => {
       const itens = [];
@@ -412,7 +567,7 @@
               <p>Seu pedido (nº ${data.pedidoId}) foi enviado ao bar.</p>
               ${data.avisoImpressao ? `<p style="color:#b3261e">${data.avisoImpressao}</p>` : '<p>Aguarde, o garçom levará até a sua mesa.</p>'}
             </div>`;
-          document.querySelector('.footer-bar').style.display = 'none';
+          document.querySelectorAll('.footer-bar').forEach(el => (el.style.display = 'none'));
         } else {
           alert(data.erro || 'Não foi possível enviar o pedido.');
           btn.disabled = false;
