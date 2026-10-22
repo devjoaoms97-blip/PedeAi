@@ -1,5 +1,6 @@
 const { printer: ThermalPrinter, types: PrinterTypes } = require('node-thermal-printer');
 const { getConfig } = require('./config');
+const { formatarDataHora } = require('./datas');
 
 /**
  * Imprime um pedido no formato de comanda para o bar.
@@ -45,7 +46,7 @@ async function imprimirPedido({ mesaNome, itens, pedidoId, criadoEm }) {
   thermalPrinter.alignLeft();
   thermalPrinter.drawLine();
   thermalPrinter.println(`Pedido #${pedidoId}`);
-  thermalPrinter.println(`Horário: ${criadoEm}`);
+  thermalPrinter.println(`Horário: ${formatarDataHora(criadoEm)}`);
   thermalPrinter.drawLine();
 
   itens.forEach(it => {

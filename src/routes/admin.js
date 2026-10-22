@@ -11,6 +11,7 @@ const { imprimirPedido } = require('../services/printer');
 const { salvarImagemQuadrada, excluirImagem } = require('../services/uploads');
 const { corValida, LOGO_PADRAO } = require('../services/marca');
 const { fazerBackup, statusBackup } = require('../services/backup');
+const { formatarDataHora } = require('../services/datas');
 
 const router = express.Router();
 router.use(express.urlencoded({ extended: true }));
@@ -181,7 +182,7 @@ router.get('/', (req, res) => {
   const totalMesas = db.prepare('SELECT COUNT(*) c FROM mesas WHERE ativa = 1').get().c;
   const totalItens = db.prepare('SELECT COUNT(*) c FROM itens').get().c;
   const pedidosHoje = db
-    .prepare("SELECT COUNT(*) c FROM pedidos WHERE date(criado_em) = date('now')")
+    .prepare("SELECT COUNT(*) c FROM pedidos WHERE date(criado_em, 'localtime') = date('now', 'localtime')")
     .get().c;
   const pedidosComErro = db
     .prepare('SELECT COUNT(*) c FROM pedidos WHERE erro_impressao IS NOT NULL AND impresso = 0')
@@ -491,6 +492,7 @@ router.get('/pedidos', (req, res) => {
     .all();
   const pedidosComItens = pedidos.map(p => ({
     ...p,
+    criado_em_local: formatarDataHora(p.criado_em),
     itens: db.prepare('SELECT * FROM pedido_itens WHERE pedido_id = ?').all(p.id)
   }));
   res.render('admin/pedidos', { pedidos: pedidosComItens });
