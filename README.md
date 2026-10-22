@@ -1,4 +1,4 @@
-# Autoatendimento por QR Code — Cardápio de Bebidas
+# PedeAi — Autoatendimento por QR Code
 
 Fluxo: cliente escaneia QR da mesa → escolhe bebidas → pedido é impresso
 automaticamente na impressora do bar → barman prepara → garçom leva à mesa e

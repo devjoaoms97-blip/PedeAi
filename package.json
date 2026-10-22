@@ -1,5 +1,5 @@
 {
-  "name": "restaurante-autoatendimento",
+  "name": "pedeai",
   "version": "1.0.0",
   "description": "Cardapio digital via QR code na mesa, com impressao automatica no bar",
   "main": "src/app.js",
