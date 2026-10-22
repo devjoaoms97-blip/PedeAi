@@ -246,6 +246,25 @@ tocar sem querer, use **"Desfazer"** em "Entregues recentemente".
   novo (o navegador só libera som depois de um toque na tela).
 - A tela tenta ficar sempre acesa enquanto o painel estiver aberto.
 
+## 13. Relatórios
+
+Em **Relatórios** (só para gerentes), escolha o período no topo (hoje, 7, 30
+ou 90 dias, ou um intervalo de datas) e veja:
+
+- **Resumo**: total de pedidos, itens vendidos, valor estimado e média por pedido.
+- **Vendas por dia**: gráfico do valor de cada dia.
+- **Horários de pico** e **dias da semana**: quando sai mais pedido, útil pra
+  planejar a equipe.
+- **Itens mais vendidos** e **por mesa**: os 10 primeiros no gráfico e a lista
+  completa em "Ver tabela".
+
+Passe o mouse (ou toque) numa coluna ou barra para ver o valor exato. Todo
+gráfico tem um "Ver tabela" com os números.
+
+Importante: os relatórios só enxergam os pedidos feitos pelo QR Code. O valor
+é uma estimativa pelo preço dos itens na hora do pedido. O que foi lançado
+direto na comanda ou ajustado no caixa não aparece.
+
 ## Estrutura do projeto (caso queira mexer no código depois)
 
 ```
@@ -257,6 +276,8 @@ src/
     printer.js         -> lógica de impressão ESC/POS via rede
     marca.js           -> nome, logo e cores do restaurante (usados em todas as telas)
     backup.js          -> backup diário do banco e das imagens
+    relatorios.js      -> consultas dos relatórios de vendas
+    datas.js           -> conversão das datas do banco (UTC) para o horário local
   routes/
     customer.js        -> páginas que o cliente vê (cardápio + envio de pedido)
     admin.js            -> painel administrativo

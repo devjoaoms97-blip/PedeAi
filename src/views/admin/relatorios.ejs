@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Relatórios</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
+</head>
+<%
+  const reais = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const numero = v => (v || 0).toLocaleString('pt-BR');
+  const diaCurto = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  const diaLongo = iso => new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  const plural = (n, um, varios) => `${numero(n)} ${n === 1 ? um : varios}`;
+  const vazio = r.totais.pedidos === 0;
+%>
+<body>
+  <%- include('../partials/admin-topbar') %>
+  <div class="admin-container relatorios">
+    <h2>Relatórios</h2>
+
+    <form class="filtros" method="GET" action="/admin/relatorios">
+      <div class="filtro-presets" role="group" aria-label="Período">
+        <% Object.entries(periodos).forEach(([chave, p]) => { %>
+          <a href="/admin/relatorios?periodo=<%= chave %>" class="<%= periodo.chave === chave ? 'ativo' : '' %>"><%= p.rotulo %></a>
+        <% }) %>
+      </div>
+      <div class="filtro-custom">
+        <input type="hidden" name="periodo" value="custom">
+        <label>De <input type="date" name="de" value="<%= periodo.de %>" required></label>
+        <label>até <input type="date" name="ate" value="<%= periodo.ate %>" required></label>
+        <button class="btn-secundario <%= periodo.chave === 'custom' ? 'ativo' : '' %>" type="submit">Aplicar</button>
+      </div>
+    </form>
+
+    <p class="item-desc">
+      Considera só os pedidos feitos pelo QR Code. O valor é estimado pelo preço dos itens no momento do pedido
+      (o que foi lançado direto na comanda ou ajustado no caixa não aparece aqui).
+    </p>
+
+    <div class="stats">
+      <div class="card stat"><div class="stat-rotulo">Pedidos</div><div class="stat-valor"><%= numero(r.totais.pedidos) %></div></div>
+      <div class="card stat"><div class="stat-rotulo">Itens vendidos</div><div class="stat-valor"><%= numero(r.totais.itens) %></div></div>
+      <div class="card stat"><div class="stat-rotulo">Valor estimado</div><div class="stat-valor"><%= reais(r.totais.valor) %></div></div>
+      <div class="card stat"><div class="stat-rotulo">Média por pedido</div><div class="stat-valor"><%= reais(r.totais.ticketMedio) %></div></div>
+    </div>
+
+    <% if (vazio) { %>
+      <div class="card" style="text-align:center; padding:32px;">Nenhum pedido neste período.</div>
+    <% } else { %>
+
+    <div class="card">
+      <h3>Vendas por dia</h3>
+      <p class="item-desc">Valor estimado de cada dia</p>
+      <%- include('../partials/grafico-colunas', {
+        titulo: 'Valor estimado vendido por dia',
+        pontos: r.porDia.map(d => ({ rotulo: diaCurto(d.dia), valor: d.valor, textoValor: `${reais(d.valor)} · ${plural(d.pedidos, 'pedido', 'pedidos')}` })),
+        rotuloACada: Math.ceil(r.porDia.length / 12)
+      }) %>
+      <details>
+        <summary>Ver tabela</summary>
+        <table>
+          <thead><tr><th>Dia</th><th class="num">Pedidos</th><th class="num">Valor estimado</th></tr></thead>
+          <tbody>
+            <% r.porDia.slice().reverse().forEach(d => { %>
+              <tr><td><%= diaLongo(d.dia) %></td><td class="num"><%= numero(d.pedidos) %></td><td class="num"><%= reais(d.valor) %></td></tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </details>
+    </div>
+
+    <div class="grade-2">
+      <div class="card">
+        <h3>Horários de pico</h3>
+        <p class="item-desc">Pedidos por hora do dia</p>
+        <%
+          // Mostra só a faixa de horas com movimento (com 1h de folga), em vez das 24h
+          const comPedido = r.porHora.filter(h => h.pedidos > 0).map(h => h.hora);
+          const horaIni = Math.max(0, Math.min(...comPedido) - 1);
+          const horaFim = Math.min(23, Math.max(...comPedido) + 1);
+          const horas = r.porHora.slice(horaIni, horaFim + 1);
+        %>
+        <%- include('../partials/grafico-colunas', {
+          titulo: 'Pedidos por hora do dia',
+          pontos: horas.map(h => ({ rotulo: `${h.hora}h`, valor: h.pedidos, textoValor: plural(h.pedidos, 'pedido', 'pedidos') })),
+          rotuloACada: Math.ceil(horas.length / 12)
+        }) %>
+        <details>
+          <summary>Ver tabela</summary>
+          <table>
+            <thead><tr><th>Hora</th><th class="num">Pedidos</th></tr></thead>
+            <tbody>
+              <% horas.forEach(h => { %><tr><td><%= h.hora %>h às <%= h.hora + 1 %>h</td><td class="num"><%= numero(h.pedidos) %></td></tr><% }) %>
+            </tbody>
+          </table>
+        </details>
+      </div>
+
+      <div class="card">
+        <h3>Dias da semana</h3>
+        <p class="item-desc">Pedidos por dia da semana, somando o período</p>
+        <%- include('../partials/grafico-colunas', {
+          titulo: 'Pedidos por dia da semana',
+          pontos: r.porDiaSemana.map(d => ({ rotulo: d.dia, valor: d.pedidos, textoValor: plural(d.pedidos, 'pedido', 'pedidos') })),
+          rotuloACada: 1
+        }) %>
+        <details>
+          <summary>Ver tabela</summary>
+          <table>
+            <thead><tr><th>Dia</th><th class="num">Pedidos</th></tr></thead>
+            <tbody>
+              <% r.porDiaSemana.forEach(d => { %><tr><td><%= d.dia %></td><td class="num"><%= numero(d.pedidos) %></td></tr><% }) %>
+            </tbody>
+          </table>
+        </details>
+      </div>
+    </div>
+
+    <div class="grade-2">
+      <div class="card">
+        <h3>Itens mais vendidos</h3>
+        <p class="item-desc">Por quantidade</p>
+        <% const maxItem = r.itens.length ? r.itens[0].quantidade : 1; %>
+        <div class="barras">
+          <% r.itens.slice(0, 10).forEach(it => { %>
+            <div class="barra-linha" tabindex="0" data-dica="<%= it.nome %>: <%= plural(it.quantidade, 'unidade', 'unidades') %> · <%= reais(it.valor) %>">
+              <span class="barra-nome"><%= it.nome %></span>
+              <span class="barra-trilho"><span class="barra" style="width: <%= (it.quantidade / maxItem) * 100 %>%;"></span></span>
+              <span class="barra-valor"><%= numero(it.quantidade) %></span>
+            </div>
+          <% }) %>
+        </div>
+        <details>
+          <summary>Ver tabela completa (<%= r.itens.length %> itens)</summary>
+          <table>
+            <thead><tr><th>Item</th><th class="num">Qtd.</th><th class="num">Valor estimado</th></tr></thead>
+            <tbody>
+              <% r.itens.forEach(it => { %>
+                <tr><td><%= it.nome %></td><td class="num"><%= numero(it.quantidade) %></td><td class="num"><%= reais(it.valor) %></td></tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </details>
+      </div>
+
+      <div class="card">
+        <h3>Por mesa</h3>
+        <p class="item-desc">Mesas com mais pedidos</p>
+        <% const maxMesa = r.mesas.length ? r.mesas[0].pedidos : 1; %>
+        <div class="barras">
+          <% r.mesas.slice(0, 10).forEach(m => { %>
+            <div class="barra-linha" tabindex="0" data-dica="<%= m.nome %>: <%= plural(m.pedidos, 'pedido', 'pedidos') %> · <%= reais(m.valor) %>">
+              <span class="barra-nome"><%= m.nome %></span>
+              <span class="barra-trilho"><span class="barra" style="width: <%= (m.pedidos / maxMesa) * 100 %>%;"></span></span>
+              <span class="barra-valor"><%= numero(m.pedidos) %></span>
+            </div>
+          <% }) %>
+        </div>
+        <details>
+          <summary>Ver tabela completa (<%= r.mesas.length %> mesas)</summary>
+          <table>
+            <thead><tr><th>Mesa</th><th class="num">Pedidos</th><th class="num">Valor estimado</th></tr></thead>
+            <tbody>
+              <% r.mesas.forEach(m => { %>
+                <tr><td><%= m.nome %></td><td class="num"><%= numero(m.pedidos) %></td><td class="num"><%= reais(m.valor) %></td></tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </details>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <div class="dica-grafico" id="dica" role="tooltip" hidden></div>
+  <script>
+    // Um tooltip só, reaproveitado por todas as colunas e barras (mouse, toque e teclado)
+    const dica = document.getElementById('dica');
+    function mostrar(alvo) {
+      const [rotulo, valor] = alvo.dataset.dica.split(/: (.*)/s);
+      const forte = document.createElement('strong');
+      forte.textContent = valor;
+      const sub = document.createElement('span');
+      sub.textContent = rotulo;
+      dica.replaceChildren(forte, sub);
+      dica.hidden = false;
+      const caixa = alvo.getBoundingClientRect();
+      const x = Math.min(window.innerWidth - dica.offsetWidth - 8, Math.max(8, caixa.left + caixa.width / 2 - dica.offsetWidth / 2));
+      dica.style.left = x + 'px';
+      dica.style.top = (window.scrollY + caixa.top - dica.offsetHeight - 8) + 'px';
+    }
+    document.querySelectorAll('[data-dica]').forEach(alvo => {
+      alvo.addEventListener('pointerenter', () => mostrar(alvo));
+      alvo.addEventListener('focus', () => mostrar(alvo));
+      alvo.addEventListener('pointerleave', () => { dica.hidden = true; });
+      alvo.addEventListener('blur', () => { dica.hidden = true; });
+    });
+  </script>
+</body>
+</html>

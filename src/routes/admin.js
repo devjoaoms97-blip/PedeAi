@@ -12,6 +12,7 @@ const { salvarImagemQuadrada, excluirImagem } = require('../services/uploads');
 const { corValida, LOGO_PADRAO } = require('../services/marca');
 const { fazerBackup, statusBackup } = require('../services/backup');
 const { formatarDataHora } = require('../services/datas');
+const { resolverPeriodo, gerarRelatorio, PERIODOS } = require('../services/relatorios');
 
 const router = express.Router();
 router.use(express.urlencoded({ extended: true }));
@@ -496,6 +497,12 @@ router.get('/pedidos', (req, res) => {
     itens: db.prepare('SELECT * FROM pedido_itens WHERE pedido_id = ?').all(p.id)
   }));
   res.render('admin/pedidos', { pedidos: pedidosComItens });
+});
+
+// ---------- Relatórios ----------
+router.get('/relatorios', (req, res) => {
+  const periodo = resolverPeriodo(req.query);
+  res.render('admin/relatorios', { periodo, periodos: PERIODOS, r: gerarRelatorio(periodo) });
 });
 
 // ---------- Painel do bar (pedidos em tempo real) ----------

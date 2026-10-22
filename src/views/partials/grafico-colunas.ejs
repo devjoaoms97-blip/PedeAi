@@ -1,0 +1,38 @@
+<%#
+  Gráfico de colunas de uma série só (sem legenda: o título do card já diz o que é).
+  Parâmetros: titulo (texto pra leitores de tela), pontos: [{ rotulo, valor, textoValor }],
+  rotuloACada (mostra 1 a cada N rótulos no eixo X, pra não amontoar).
+%>
+<%
+  const maior = Math.max(0, ...pontos.map(p => p.valor));
+  // Topo "redondo" pro eixo: 1, 2, 2.5, 5 ou 10 vezes uma potência de 10
+  let topo = 1;
+  if (maior > 0) {
+    const base = Math.pow(10, Math.floor(Math.log10(maior)));
+    topo = [1, 2, 2.5, 5, 10].map(m => m * base).find(v => v >= maior);
+  }
+  const marcas = [0, 0.5, 1].map(f => topo * f);
+  const indiceMaior = pontos.findIndex(p => p.valor === maior && maior > 0);
+  const passo = rotuloACada || 1;
+  const formatarMarca = v => v >= 1000 ? (v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil' : v.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+%>
+<div class="grafico" role="img" aria-label="<%= titulo %>">
+  <div class="grafico-area">
+    <% marcas.forEach(m => { %>
+      <div class="grafico-grade" style="bottom: <%= (m / topo) * 100 %>%;"><span><%= formatarMarca(m) %></span></div>
+    <% }) %>
+    <div class="grafico-colunas">
+      <% pontos.forEach((p, i) => { %>
+        <div class="grafico-slot" tabindex="0" data-dica="<%= p.rotulo %>: <%= p.textoValor %>">
+          <% if (i === indiceMaior) { %><span class="grafico-valor-maior" style="bottom: calc(<%= (p.valor / topo) * 100 %>% + 4px);"><%= p.textoValor %></span><% } %>
+          <div class="grafico-coluna" style="height: <%= (p.valor / topo) * 100 %>%;"></div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+  <div class="grafico-rotulos">
+    <% pontos.forEach((p, i) => { %>
+      <span><%= i % passo === 0 ? p.rotulo : '' %></span>
+    <% }) %>
+  </div>
+</div>
