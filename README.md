@@ -185,6 +185,16 @@ Isso vale para o cardápio do cliente, os cartões de QR impressos das mesas, o
 painel admin e a tela de login. O ticket térmico do bar mostra o nome do
 restaurante no topo (a impressora é preto e branco, então só o nome).
 
+### Modo noturno
+
+O cardápio e o painel têm tema claro e escuro. Por padrão o tema segue o
+aparelho (se o celular do cliente está no modo escuro, o cardápio abre escuro).
+O botão de tema — no topo do cardápio e no rodapé do menu lateral do painel —
+alterna entre **Automático → Claro → Escuro**, e cada aparelho lembra a sua
+escolha. Útil para deixar o tablet do bar sempre no escuro. No modo escuro a cor
+principal fica um pouco mais clara para continuar legível. A página de
+impressão dos QR codes fica sempre no claro.
+
 ## 10. Backup automático
 
 Uma vez por dia (e logo ao ligar, se já passou um dia desde o último), o sistema
@@ -289,5 +299,13 @@ data/
 
 ## Próximos passos possíveis (quando quiser)
 
+- **Acompanhar o pedido**: o cliente vê no celular se o pedido foi recebido,
+  está em preparo ou a caminho (aproveita o status do painel do bar).
+- **Botão "Chamar garçom"**: o chamado aparece no painel do bar. Não tem
+  "pedir a conta" — a conta continua sendo fechada só no caixa.
+- **Cancelar pedido com motivo**: o gerente cancela, o pedido sai dos
+  relatórios e fica registrado quem cancelou e por quê.
+- **Log de atividades**: registro de quem alterou preço, removeu item,
+  reimprimiu pedido etc.
 - Adicionar categoria de "Porções" e a segunda impressora (cozinha), seguindo o
   mesmo padrão já construído.

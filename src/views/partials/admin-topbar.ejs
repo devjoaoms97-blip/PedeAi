@@ -1,27 +1,38 @@
-  <div class="topbar topbar-admin">
-    <a href="/admin" class="topbar-marca">
+<%
+  // Item do menu fica destacado quando a página atual é ele (ou uma subpágina dele).
+  const menuAtivo = href => href === '/admin'
+    ? caminhoAtual === '/admin' || caminhoAtual === '/admin/'
+    : caminhoAtual === href || caminhoAtual.startsWith(href + '/');
+  const itensMenu = [];
+  if (usuario.ehGerente) {
+    itensMenu.push(['/admin', 'Dashboard'], ['/admin/mesas', 'Mesas'], ['/admin/cardapio', 'Cardápio'], ['/admin/opcoes-padrao', 'Opções padrão']);
+  }
+  if (painelAtivo) itensMenu.push(['/admin/painel', 'Painel do bar']);
+  itensMenu.push(['/admin/pedidos', 'Pedidos']);
+  if (usuario.ehGerente) {
+    itensMenu.push(['/admin/relatorios', 'Relatórios'], ['/admin/usuarios', 'Usuários'], ['/admin/config', 'Configuração']);
+  }
+%>
+  <aside class="admin-sidebar">
+    <a href="/admin" class="sidebar-marca">
       <img class="logo-restaurante" src="<%= marca.logo %>" alt="Logo <%= marca.nome %>">
       <span><%= marca.nome %></span>
     </a>
-    <nav class="admin-nav">
-      <% if (usuario.ehGerente) { %>
-        <a href="/admin">Dashboard</a>
-        <a href="/admin/mesas">Mesas</a>
-        <a href="/admin/cardapio">Cardápio</a>
-        <a href="/admin/opcoes-padrao">Opções padrão</a>
-      <% } %>
-      <% if (painelAtivo) { %><a href="/admin/painel">Painel do bar</a><% } %>
-      <a href="/admin/pedidos">Pedidos</a>
-      <% if (usuario.ehGerente) { %>
-        <a href="/admin/relatorios">Relatórios</a>
-        <a href="/admin/usuarios">Usuários</a>
-        <a href="/admin/config">Configuração</a>
-      <% } %>
+    <nav class="admin-nav" aria-label="Menu do painel">
+      <% itensMenu.forEach(([href, nome]) => { %>
+        <a href="<%= href %>"<% if (menuAtivo(href)) { %> class="ativo" aria-current="page"<% } %>><%= nome %></a>
+      <% }) %>
     </nav>
-    <div class="topbar-usuario">
-      <a href="/admin/minha-senha" title="Trocar minha senha"><%= usuario.nomeExibicao %> · <%= perfis[usuario.perfil] %></a>
-      <form method="POST" action="/admin/logout" style="display:inline">
-        <button type="submit">Sair</button>
-      </form>
+    <div class="sidebar-rodape">
+      <%- include('botao-tema') %>
+      <div class="sidebar-usuario">
+        <a href="/admin/minha-senha" title="Trocar minha senha">
+          <strong><%= usuario.nomeExibicao %></strong>
+          <span><%= perfis[usuario.perfil] %></span>
+        </a>
+        <form method="POST" action="/admin/logout">
+          <button type="submit" class="btn-secundario btn-mini">Sair</button>
+        </form>
+      </div>
     </div>
-  </div>
+  </aside>

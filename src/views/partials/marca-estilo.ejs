@@ -6,5 +6,36 @@
     --cor-borda: <%= marca.corBorda %>;
     --cor-destaque: <%= marca.corDestaque %>;
   }
+  :root[data-tema="escuro"] {
+    --cor-primaria: <%= marca.noturno.corPrimaria %>;
+    --cor-primaria-media: <%= marca.noturno.corPrimariaMedia %>;
+    --cor-fundo: <%= marca.noturno.corFundo %>;
+    --cor-borda: <%= marca.noturno.corBorda %>;
+  }
 </style>
 <link rel="icon" href="<%= marca.logo %>">
+<script>
+  // Tema claro/escuro: "auto" segue o aparelho; "claro" ou "escuro" é a escolha
+  // feita no botão de tema (guardada só neste aparelho). Roda antes de a página
+  // aparecer, pra não piscar no tema errado. Páginas com data-tema-fixo (ex:
+  // impressão dos QR codes) ficam sempre no claro.
+  (function () {
+    var raiz = document.documentElement;
+    if (raiz.hasAttribute('data-tema-fixo')) return;
+    var midia = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function preferencia() {
+      try { return localStorage.getItem('pedeai-tema') || 'auto'; } catch (e) { return 'auto'; }
+    }
+
+    function aplicar() {
+      var pref = preferencia();
+      raiz.setAttribute('data-tema-preferencia', pref);
+      raiz.setAttribute('data-tema', pref === 'auto' ? (midia.matches ? 'escuro' : 'claro') : pref);
+    }
+
+    aplicar();
+    if (midia.addEventListener) midia.addEventListener('change', aplicar);
+    window.pedeaiTema = { aplicar: aplicar, preferencia: preferencia };
+  })();
+</script>

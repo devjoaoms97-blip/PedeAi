@@ -1,70 +1,144 @@
-/* Identidade visual do restaurante no cardápio do cliente. As cores vêm de
-   variáveis definidas em views/partials/marca-estilo.ejs (configuráveis no admin). */
+/* Cardápio do cliente. As cores vêm das variáveis de style.css (claro/escuro) e
+   de views/partials/marca-estilo.ejs (cores do restaurante, configuráveis no admin). */
 
-body.cliente {
-  background: linear-gradient(180deg, var(--cor-fundo) 0%, #f7faf5 35%, #ffffff 100%);
-  min-height: 100vh;
+body.cliente { min-height: 100vh; }
+
+/* ---------- Topo ---------- */
+.cliente-topo {
+  display: flex; align-items: center; gap: 12px;
+  max-width: 480px; margin: 0 auto; padding: 16px 16px 8px;
+}
+.cliente-topo .logo-restaurante { width: 40px; height: 40px; border-radius: 10px; }
+.cliente-topo-textos { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.3; }
+.cliente-topo-nome { font-weight: 700; font-size: 16px; }
+.cliente-topo-mesa { font-size: 13px; color: var(--texto-fraco); }
+.cliente-topo-mesa strong { color: var(--texto); }
+.cliente-topo .btn-tema { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 12px; border: none; }
+.cliente-topo .btn-tema-texto { display: none; }
+
+/* ---------- Grade de categorias ---------- */
+.grade-categorias {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 4px 0;
+}
+.tile-categoria {
+  background: var(--superficie); border: 1px solid var(--borda); border-radius: 16px;
+  padding: 18px 10px; text-align: center; cursor: pointer; color: var(--texto);
+  font-family: inherit;
+}
+.tile-categoria:hover { border-color: var(--texto-fraco); }
+.tile-categoria .icone {
+  width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 10px;
+  object-fit: cover; display: block; background: var(--cor-fundo);
+}
+.tile-categoria .icone-fallback {
+  width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--cor-fundo); font-size: 24px; color: var(--cor-primaria); font-weight: 700;
+}
+.tile-categoria .nome-categoria { font-weight: 600; font-size: 15px; }
+
+/* ---------- Tela de uma categoria ---------- */
+.tela-categoria { display: none; }
+.tela-categoria.ativa { display: block; }
+.btn-voltar {
+  background: none; border: none; color: var(--texto-fraco); font-weight: 600; font-family: inherit;
+  font-size: 15px; padding: 10px 0; cursor: pointer; min-height: 44px;
+}
+.btn-voltar:hover { color: var(--texto); }
+.titulo-tela { font-size: 22px; font-weight: 700; margin: 4px 0 4px; }
+
+.item-linha {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; row-gap: 10px;
+  grid-template-areas: "info foto" "controles foto" "linhas linhas";
+  padding: 16px 0; border-bottom: 1px solid var(--borda-fraca);
+}
+.item-linha:last-child { border-bottom: none; }
+.item-linha .item-info { grid-area: info; display: flex; flex-direction: column; gap: 4px; }
+.item-linha .item-nome { font-size: 16px; }
+.item-linha .item-preco { color: var(--texto); font-weight: 600; font-size: 15px; margin-top: 2px; }
+.item-foto { grid-area: foto; }
+.item-foto img, .item-foto .item-foto-vazia {
+  width: 84px; height: 84px; border-radius: 14px; object-fit: cover; display: block;
+}
+.item-foto .item-foto-vazia {
+  background: var(--superficie-2); color: var(--texto-fraco);
+  display: flex; align-items: center; justify-content: center;
+}
+.item-controles { grid-area: controles; align-self: end; }
+.linhas-configuradas { grid-area: linhas; }
+.linhas-configuradas:empty { display: none; }
+
+.qtd-control { gap: 4px; }
+.qtd-btn {
+  width: 44px; height: 44px; border: none; background: var(--cor-primaria);
+  color: var(--sobre-primaria); font-size: 20px; font-weight: 600;
+}
+.qtd-btn.btn-menos { background: var(--superficie-2); color: var(--texto); }
+.qtd-valor { min-width: 28px; font-size: 16px; }
+.btn-abrir-modal {
+  min-height: 44px; border-radius: 22px; padding: 0 18px; font-weight: 600;
+  background: var(--cor-primaria); color: var(--sobre-primaria); border: none;
+}
+.btn-abrir-modal:hover { border: none; }
+
+.linha-configurada {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  background: var(--superficie-2); border-radius: 10px; padding: 8px 10px; margin-top: 6px; font-size: 13px;
+}
+.linha-configurada .remover {
+  color: var(--perigo); background: none; border: none; cursor: pointer; font-size: 13px;
+  font-family: inherit; min-height: 32px;
 }
 
-body.cliente .topbar {
-  background: linear-gradient(90deg, var(--cor-primaria), var(--cor-primaria-media));
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-}
-
-body.cliente .topbar img.logo-restaurante {
-  height: 38px;
-  width: 38px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255,255,255,0.85);
-  flex-shrink: 0;
-}
-
-body.cliente .topbar .topbar-textos {
-  line-height: 1.2;
-}
-
-body.cliente .topbar .topbar-nome {
-  font-weight: 700;
-  font-size: 15px;
-}
-
-body.cliente .topbar .topbar-mesa {
-  font-size: 12px;
-  opacity: 0.85;
-}
-
-body.cliente .item-preco {
-  color: var(--cor-primaria);
-  font-weight: 700;
-}
-
-body.cliente .card {
-  border: 1px solid var(--cor-borda);
-}
-
-body.cliente .qtd-btn {
-  border-color: var(--cor-primaria-media);
-  color: var(--cor-primaria);
-}
-
-body.cliente .btn-primario,
-body.cliente #modal-confirmar {
-  background: var(--cor-destaque);
-}
-
-body.cliente .btn-primario:disabled {
-  background: var(--cor-destaque);
-  opacity: 0.4;
-}
-
+/* ---------- Rodapé (carrinho / fazer pedido) ---------- */
 body.cliente .footer-bar {
-  border-top: 1px solid var(--cor-borda);
+  display: flex; gap: 8px; background: transparent; border-top: none;
+  max-width: 480px; margin: 16px auto 0; padding: 12px 16px 20px;
 }
+body.cliente .btn-primario {
+  background: var(--cor-destaque); color: #fff; height: 58px; border-radius: 16px;
+  font-size: 16px; box-shadow: var(--sombra-flutuante);
+}
+body.cliente .btn-primario:disabled { opacity: 0.45; box-shadow: none; }
 
-body.cliente h3 {
-  color: var(--cor-primaria);
+/* ---------- Opções do item (janela que sobe de baixo) ---------- */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+  z-index: 50; align-items: flex-end; justify-content: center;
 }
+.modal-overlay.aberto { display: flex; }
+.modal-box {
+  background: var(--superficie); color: var(--texto); width: 100%; max-width: 480px;
+  border-radius: 20px 20px 0 0; padding: 22px 16px; max-height: 85vh; overflow-y: auto;
+}
+.modal-box .qtd-control { justify-content: center; margin: 12px 0; }
+.grupo-opcao { margin-bottom: 16px; }
+.grupo-opcao-titulo { font-weight: 600; margin-bottom: 6px; }
+.grupo-opcao-obrigatorio { color: var(--perigo); font-size: 12px; font-weight: normal; }
+.opcao-valor-linha { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.opcao-valor-linha input { accent-color: var(--cor-primaria); width: 20px; height: 20px; }
+.opcao-valor-linha label { margin: 0; font-size: 15px; color: var(--texto); }
+#modal-cancelar { width: 100%; margin-top: 8px; min-height: 48px; }
+
+/* ---------- Carrinho ---------- */
+.tela-carrinho { display: none; }
+.tela-carrinho.aberta { display: block; }
+.linha-carrinho {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--borda-fraca);
+}
+.linha-carrinho:last-child { border-bottom: none; }
+.linha-carrinho-info { flex: 1; }
+.linha-carrinho-nome { font-weight: 600; }
+.linha-carrinho-detalhe { font-size: 12px; color: var(--texto-fraco); margin-top: 2px; }
+.linha-carrinho-valor { font-size: 13px; color: var(--texto-suave); margin-top: 4px; }
+.linha-carrinho-acoes { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.linha-carrinho-remover {
+  color: var(--perigo); background: none; border: none; cursor: pointer; font-size: 13px;
+  padding: 0; min-height: 32px; font-family: inherit;
+}
+.carrinho-total {
+  display: flex; justify-content: space-between; font-weight: 700;
+  font-size: 17px; padding: 14px 0 4px;
+}
+.carrinho-vazio { text-align: center; color: var(--texto-fraco); padding: 24px 0; }

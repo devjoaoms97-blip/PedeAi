@@ -27,6 +27,7 @@ app.use(
 // Nome, logo e cores do restaurante disponíveis em todas as páginas
 app.use((req, res, next) => {
   res.locals.marca = getMarca();
+  res.locals.caminhoAtual = req.path; // pra destacar a página atual no menu do admin
   next();
 });
 

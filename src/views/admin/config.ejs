@@ -85,7 +85,7 @@
         <label>Pasta de destino (caminho completo)</label>
         <input type="text" name="backup_pasta" value="<%= backup.usandoPastaPadrao ? '' : backup.pasta %>" placeholder="<%= backup.pastaPadrao %>">
         <% if (backup.usandoPastaPadrao) { %>
-          <p class="item-desc" style="color:#b3261e;">⚠️ Usando a pasta padrão, no próprio notebook. Se o notebook der problema, o backup se perde junto. Prefira uma pasta do Google Drive/OneDrive sincronizada ou um pendrive.</p>
+          <p class="item-desc texto-erro">⚠️ Usando a pasta padrão, no próprio notebook. Se o notebook der problema, o backup se perde junto. Prefira uma pasta do Google Drive/OneDrive sincronizada ou um pendrive.</p>
         <% } %>
         <label>Quantas cópias manter</label>
         <input type="number" name="backup_manter" min="1" max="365" value="<%= backup.manter %>">

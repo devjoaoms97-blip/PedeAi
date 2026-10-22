@@ -12,37 +12,40 @@
   <div class="admin-container">
     <h2>Visão geral</h2>
     <% if (pedidosComErro > 0) { %>
-      <div class="card" style="border-left: 4px solid #d33;">
-        ⚠️ <%= pedidosComErro %> pedido(s) com erro de impressão. Veja em <a href="/admin/pedidos">Pedidos</a>.
+      <div class="alerta alerta-erro">
+        <span><%= pedidosComErro %> pedido(s) com erro de impressão.</span>
+        <a href="/admin/pedidos">Ver pedidos</a>
       </div>
     <% } %>
     <% if (senhaPadrao) { %>
-      <div class="card" style="border-left: 4px solid #d33;">
-        ⚠️ Você entrou com a senha inicial (admin123). Troque em <a href="/admin/minha-senha">Minha senha</a>.
+      <div class="alerta alerta-erro">
+        <span>Você entrou com a senha inicial (admin123).</span>
+        <a href="/admin/minha-senha">Trocar senha</a>
       </div>
     <% } %>
     <% if (backup.erro || backup.atrasado) { %>
-      <div class="card" style="border-left: 4px solid #d33;">
-        ⚠️ <%= backup.erro ? 'O último backup falhou.' : 'Nenhum backup nas últimas 24 horas.' %>
-        Veja em <a href="/admin/config#backup">Configuração</a>.
+      <div class="alerta alerta-erro">
+        <span><%= backup.erro ? 'O último backup falhou.' : 'Nenhum backup nas últimas 24 horas.' %></span>
+        <a href="/admin/config#backup">Ver backup</a>
       </div>
     <% } else if (backup.usandoPastaPadrao) { %>
-      <div class="card" style="border-left: 4px solid #e0a800;">
-        Os backups estão sendo salvos no próprio notebook. Escolha uma pasta na nuvem ou um pendrive em <a href="/admin/config#backup">Configuração</a>.
+      <div class="alerta">
+        <span>Os backups estão sendo salvos no próprio notebook. Escolha uma pasta na nuvem ou um pendrive.</span>
+        <a href="/admin/config#backup">Configurar backup</a>
       </div>
     <% } %>
-    <div style="display:flex; gap:12px; flex-wrap:wrap;">
-      <div class="card" style="flex:1; min-width:140px;">
-        <div class="item-desc">Mesas ativas</div>
-        <h2><%= totalMesas %></h2>
+    <div class="kpis">
+      <div class="card kpi">
+        <span class="kpi-rotulo">Mesas ativas</span>
+        <span class="kpi-valor"><%= totalMesas %></span>
       </div>
-      <div class="card" style="flex:1; min-width:140px;">
-        <div class="item-desc">Itens no cardápio</div>
-        <h2><%= totalItens %></h2>
+      <div class="card kpi">
+        <span class="kpi-rotulo">Itens no cardápio</span>
+        <span class="kpi-valor"><%= totalItens %></span>
       </div>
-      <div class="card" style="flex:1; min-width:140px;">
-        <div class="item-desc">Pedidos hoje</div>
-        <h2><%= pedidosHoje %></h2>
+      <div class="card kpi">
+        <span class="kpi-rotulo">Pedidos hoje</span>
+        <span class="kpi-valor"><%= pedidosHoje %></span>
       </div>
     </div>
   </div>

@@ -35,7 +35,7 @@
           <% }) %>
         </ul>
         <% if (p.erro_impressao) { %>
-          <div style="color:#b3261e; font-size:13px; margin-bottom:8px;">Erro: <%= p.erro_impressao %></div>
+          <div class="texto-erro" style="font-size:13px; margin-bottom:8px;">Erro: <%= p.erro_impressao %></div>
           <form method="POST" action="/admin/pedidos/<%= p.id %>/reimprimir">
             <button class="btn-secundario btn-mini" type="submit">Tentar reimprimir</button>
           </form>

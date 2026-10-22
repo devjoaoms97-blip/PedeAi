@@ -7,95 +7,16 @@
   <link rel="stylesheet" href="/css/style.css">
   <%- include('../partials/marca-estilo') %>
   <link rel="stylesheet" href="/css/cliente.css">
-  <style>
-    .modal-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-      z-index: 50; align-items: flex-end; justify-content: center;
-    }
-    .modal-overlay.aberto { display: flex; }
-    .modal-box {
-      background: #fff; width: 100%; max-width: 480px; border-radius: 16px 16px 0 0;
-      padding: 20px 16px; max-height: 85vh; overflow-y: auto;
-    }
-    .grupo-opcao { margin-bottom: 16px; }
-    .grupo-opcao-titulo { font-weight: 600; margin-bottom: 6px; }
-    .grupo-opcao-obrigatorio { color: #b3261e; font-size: 12px; font-weight: normal; }
-    .opcao-valor-linha { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
-    .opcao-valor-linha label { margin: 0; font-size: 15px; color: #1f2023; }
-    .linha-configurada {
-      display: flex; justify-content: space-between; align-items: center;
-      background: #f7f7f8; border-radius: 8px; padding: 8px 10px; margin-top: 6px; font-size: 13px;
-    }
-    .linha-configurada .remover { color: #b3261e; background: none; border: none; cursor: pointer; font-size: 13px; }
-
-    .grade-categorias {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 4px 0;
-    }
-    .tile-categoria {
-      background: #fff; border-radius: 14px; padding: 16px 10px; text-align: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08); cursor: pointer; border: none;
-    }
-    .tile-categoria .icone {
-      width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 8px;
-      object-fit: cover; display: block; background: var(--cor-fundo);
-    }
-    .tile-categoria .icone-fallback {
-      width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 8px;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--cor-fundo); font-size: 24px; color: var(--cor-primaria); font-weight: 700;
-    }
-    .tile-categoria .nome-categoria { font-weight: 600; font-size: 14px; }
-
-    .tela-categoria { display: none; }
-    .tela-categoria.ativa { display: block; }
-    .btn-voltar {
-      background: none; border: none; color: var(--cor-primaria); font-weight: 600;
-      font-size: 15px; padding: 8px 0; cursor: pointer;
-    }
-
-    .item-icone {
-      width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
-    }
-    .item-icone-fallback {
-      width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--cor-fundo); font-size: 20px;
-    }
-
-    .footer-bar { display: flex; gap: 8px; }
-    .footer-bar .btn-secundario { flex: 0 0 auto; white-space: nowrap; }
-    .footer-bar .btn-primario { flex: 1; }
-
-    .tela-carrinho { display: none; }
-    .tela-carrinho.aberta { display: block; }
-    .linha-carrinho {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      gap: 10px; padding: 10px 0; border-bottom: 1px solid #eee;
-    }
-    .linha-carrinho:last-child { border-bottom: none; }
-    .linha-carrinho-info { flex: 1; }
-    .linha-carrinho-nome { font-weight: 600; }
-    .linha-carrinho-detalhe { font-size: 12px; color: #666; margin-top: 2px; }
-    .linha-carrinho-valor { font-size: 13px; color: #444; margin-top: 4px; }
-    .linha-carrinho-acoes { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-    .linha-carrinho-remover {
-      color: #b3261e; background: none; border: none; cursor: pointer; font-size: 12px; padding: 0;
-    }
-    .carrinho-total {
-      display: flex; justify-content: space-between; font-weight: 700;
-      font-size: 17px; padding: 14px 0 4px;
-    }
-    .carrinho-vazio { text-align: center; color: #777; padding: 24px 0; }
-  </style>
 </head>
 <body class="cliente">
-  <div class="topbar">
+  <header class="cliente-topo">
     <img class="logo-restaurante" src="<%= marca.logo %>" alt="Logo <%= marca.nome %>">
-    <div class="topbar-textos">
-      <div class="topbar-nome"><%= marca.nome %></div>
-      <div class="topbar-mesa"><%= mesa.nome %></div>
+    <div class="cliente-topo-textos">
+      <div class="cliente-topo-nome"><%= marca.nome %></div>
+      <div class="cliente-topo-mesa">Você está na <strong><%= mesa.nome %></strong></div>
     </div>
-  </div>
+    <%- include('../partials/botao-tema') %>
+  </header>
 
   <div class="container" id="app">
 
@@ -121,27 +42,32 @@
     <% categorias.forEach(cat => { %>
       <div class="tela-categoria" data-categoria="<%= cat.id %>">
         <button type="button" class="btn-voltar" data-voltar-home>&larr; Todas as categorias</button>
-        <h3><%= cat.nome %></h3>
+        <h1 class="titulo-tela"><%= cat.nome %></h1>
 
         <% cat.itens.forEach(item => { %>
-          <div class="card" data-item-id="<%= item.id %>">
-            <div class="item-row">
-              <% if (item.imagem) { %>
-                <img class="item-icone" src="<%= item.imagem %>" alt="<%= item.nome %>">
-              <% } else { %>
-                <div class="item-icone-fallback">🥤</div>
-              <% } %>
-              <div class="item-info">
-                <div class="item-nome"><%= item.nome %></div>
-                <% if (item.descricao) { %><div class="item-desc"><%= item.descricao %></div><% } %>
-                <div class="item-preco">R$ <%= item.preco.toFixed(2).replace('.', ',') %></div>
-              </div>
+          <div class="item-linha" data-item-id="<%= item.id %>">
+            <div class="item-info">
+              <div class="item-nome"><%= item.nome %></div>
+              <% if (item.descricao) { %><div class="item-desc"><%= item.descricao %></div><% } %>
+              <div class="item-preco">R$ <%= item.preco.toFixed(2).replace('.', ',') %></div>
+            </div>
 
+            <div class="item-foto">
+              <% if (item.imagem) { %>
+                <img src="<%= item.imagem %>" alt="<%= item.nome %>">
+              <% } else { %>
+                <div class="item-foto-vazia">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14l-1.6 16.2a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8L5 3z"></path><path d="M5.6 9h12.8"></path></svg>
+                </div>
+              <% } %>
+            </div>
+
+            <div class="item-controles">
               <% if (item.grupos.length === 0) { %>
                 <div class="qtd-control">
-                  <button type="button" class="qtd-btn btn-menos">−</button>
+                  <button type="button" class="qtd-btn btn-menos" aria-label="Tirar um <%= item.nome %>">−</button>
                   <span class="qtd-valor">0</span>
-                  <button type="button" class="qtd-btn btn-mais">+</button>
+                  <button type="button" class="qtd-btn btn-mais" aria-label="Adicionar um <%= item.nome %>">+</button>
                 </div>
               <% } else { %>
                 <button type="button" class="btn-secundario btn-abrir-modal">Adicionar</button>
@@ -158,7 +84,7 @@
 
     <div class="tela-carrinho" id="tela-carrinho">
       <button type="button" class="btn-voltar" data-fechar-carrinho>&larr; Continuar escolhendo</button>
-      <h3>Seu carrinho</h3>
+      <h1 class="titulo-tela">Seu carrinho</h1>
       <div class="card" id="carrinho-linhas"></div>
       <div class="carrinho-total">
         <span>Total</span>
@@ -182,13 +108,13 @@
       <div id="modal-grupos"></div>
       <label>Observação (opcional)</label>
       <input type="text" id="modal-observacao" placeholder="Ex: sem canudo">
-      <div class="qtd-control" style="justify-content:center; margin: 12px 0;">
-        <button type="button" class="qtd-btn" id="modal-qtd-menos">−</button>
+      <div class="qtd-control">
+        <button type="button" class="qtd-btn btn-menos" id="modal-qtd-menos">−</button>
         <span class="qtd-valor" id="modal-qtd-valor">1</span>
         <button type="button" class="qtd-btn" id="modal-qtd-mais">+</button>
       </div>
       <button class="btn-primario" id="modal-confirmar">Adicionar ao pedido</button>
-      <button class="btn-secundario" style="width:100%; margin-top:8px;" id="modal-cancelar">Cancelar</button>
+      <button class="btn-secundario" id="modal-cancelar">Cancelar</button>
     </div>
   </div>
 
@@ -326,7 +252,7 @@
           const linha = document.createElement('div');
           linha.className = 'qtd-control';
           linha.innerHTML = `
-            <button type="button" class="qtd-btn grupo-menos">−</button>
+            <button type="button" class="qtd-btn btn-menos grupo-menos">−</button>
             <span class="qtd-valor grupo-valor">${g.qtd_min}</span>
             <button type="button" class="qtd-btn grupo-mais">+</button>
           `;
@@ -566,7 +492,7 @@
             <div class="card" style="text-align:center; padding: 32px 16px;">
               <h2>Pedido enviado! ✅</h2>
               <p>Seu pedido (nº ${data.pedidoId}) foi enviado ao bar.</p>
-              ${data.avisoImpressao ? `<p style="color:#b3261e">${data.avisoImpressao}</p>` : '<p>Aguarde, o garçom levará até a sua mesa.</p>'}
+              ${data.avisoImpressao ? `<p class="texto-erro">${data.avisoImpressao}</p>` : '<p>Aguarde, o garçom levará até a sua mesa.</p>'}
             </div>`;
           document.querySelectorAll('.footer-bar').forEach(el => (el.style.display = 'none'));
         } else {

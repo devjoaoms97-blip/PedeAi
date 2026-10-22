@@ -15,7 +15,7 @@
     </div>
     <div class="card">
       <h2>Painel Admin</h2>
-      <% if (erro) { %><p style="color:#b3261e"><%= erro %></p><% } %>
+      <% if (erro) { %><p class="texto-erro"><%= erro %></p><% } %>
       <form method="POST" action="/admin/login">
         <label>Usuário</label>
         <input type="text" name="usuario" required>
