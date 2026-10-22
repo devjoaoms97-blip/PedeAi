@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Sem permissão</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
+</head>
+<body>
+  <%- include('../partials/admin-topbar') %>
+  <div class="admin-container">
+    <div class="card" style="text-align:center; padding:32px 16px;">
+      <h2>Sem permissão</h2>
+      <p>Esta tela é só para gerentes. Se precisar de acesso, fale com o gerente.</p>
+      <a href="/admin/pedidos">Ir para Pedidos</a>
+    </div>
+  </div>
+</body>
+</html>

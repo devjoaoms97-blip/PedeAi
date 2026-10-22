@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Usuários</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
+</head>
+<body>
+  <%- include('../partials/admin-topbar') %>
+  <div class="admin-container">
+    <h2>Usuários</h2>
+    <p class="item-desc">
+      <strong>Gerente</strong>: acesso total ao painel.
+      <strong>Funcionário</strong>: só acompanha os pedidos (e pode reimprimir).
+      Todos podem trocar a própria senha clicando no nome, no topo da tela.
+    </p>
+    <% if (msg) { %><div class="toast-sucesso"><%= msg %></div><% } %>
+    <% if (erro) { %><div class="badge badge-erro" style="display:block; padding:10px; margin-bottom:12px;"><%= erro %></div><% } %>
+
+    <div class="card">
+      <h3>Novo usuário</h3>
+      <form method="POST" action="/admin/usuarios/novo">
+        <div class="form-inline">
+          <div>
+            <label>Usuário (para entrar)</label>
+            <input type="text" name="usuario" required placeholder="ex: bar1" autocomplete="off">
+          </div>
+          <div>
+            <label>Nome</label>
+            <input type="text" name="nome" placeholder="ex: Carlos (bar)">
+          </div>
+          <div>
+            <label>Perfil</label>
+            <select name="perfil">
+              <option value="funcionario">Funcionário</option>
+              <option value="gerente">Gerente</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-inline">
+          <div>
+            <label>Senha (mínimo 6 caracteres)</label>
+            <input type="password" name="senha" required minlength="6" autocomplete="new-password">
+          </div>
+          <div>
+            <label>Repita a senha</label>
+            <input type="password" name="senha_confirma" required minlength="6" autocomplete="new-password">
+          </div>
+        </div>
+        <button class="btn-primario" type="submit">Criar usuário</button>
+      </form>
+    </div>
+
+    <% usuarios.forEach(u => { %>
+      <div class="card" <% if (!u.ativo) { %>style="opacity:0.6;"<% } %>>
+        <div class="item-row" style="margin-bottom:8px;">
+          <div class="item-info">
+            <span class="item-nome"><%= u.usuario %></span>
+            <% if (u.id === usuario.id) { %><span class="badge badge-ok">você</span><% } %>
+            <% if (!u.ativo) { %><span class="badge badge-erro">desativado</span><% } %>
+          </div>
+        </div>
+
+        <form method="POST" action="/admin/usuarios/<%= u.id %>/editar" class="form-inline">
+          <div>
+            <label>Nome</label>
+            <input type="text" name="nome" value="<%= u.nome || '' %>">
+          </div>
+          <div>
+            <label>Perfil</label>
+            <select name="perfil">
+              <% Object.entries(perfis).forEach(([valor, rotulo]) => { %>
+                <option value="<%= valor %>" <%= u.perfil === valor ? 'selected' : '' %>><%= rotulo %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label>Situação</label>
+            <select name="ativo">
+              <option value="1" <%= u.ativo ? 'selected' : '' %>>Ativo</option>
+              <option value="0" <%= u.ativo ? '' : 'selected' %>>Desativado</option>
+            </select>
+          </div>
+          <div style="flex:0;">
+            <button class="btn-secundario" type="submit" style="margin-bottom:10px;">Salvar</button>
+          </div>
+        </form>
+
+        <details>
+          <summary class="item-desc" style="cursor:pointer;">Definir nova senha / excluir</summary>
+          <form method="POST" action="/admin/usuarios/<%= u.id %>/senha" class="form-inline" style="margin-top:8px;">
+            <div>
+              <label>Nova senha</label>
+              <input type="password" name="senha" required minlength="6" autocomplete="new-password">
+            </div>
+            <div>
+              <label>Repita a senha</label>
+              <input type="password" name="senha_confirma" required minlength="6" autocomplete="new-password">
+            </div>
+            <div style="flex:0;">
+              <button class="btn-secundario" type="submit" style="margin-bottom:10px;">Trocar senha</button>
+            </div>
+          </form>
+          <% if (u.id !== usuario.id) { %>
+            <form method="POST" action="/admin/usuarios/<%= u.id %>/excluir"
+                  onsubmit="return confirm('Excluir o usuário <%= u.usuario %>? Isso não pode ser desfeito.');">
+              <button class="btn-secundario btn-perigo btn-mini" type="submit">Excluir usuário</button>
+            </form>
+          <% } %>
+        </details>
+      </div>
+    <% }) %>
+  </div>
+</body>
+</html>

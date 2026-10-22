@@ -119,6 +119,15 @@ nav.admin-nav a:hover { opacity: 1; }
   height: 38px; width: 38px; border-radius: 50%; object-fit: cover;
   border: 2px solid rgba(255,255,255,0.85); flex-shrink: 0;
 }
+.topbar-usuario {
+  margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 13px;
+}
+.topbar-usuario a { color: #fff; opacity: 0.85; text-decoration: none; }
+.topbar-usuario a:hover { opacity: 1; text-decoration: underline; }
+.topbar-usuario button {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: #fff;
+  border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 13px;
+}
 .topbar-admin ~ .admin-container .btn-primario,
 .tela-login .btn-primario { background: var(--cor-primaria); }
 .topbar-admin ~ .admin-container h2 { color: var(--cor-primaria); }

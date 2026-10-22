@@ -208,6 +208,23 @@ avisa se o backup falhar ou se estiver indo para a pasta padrão.
 3. Copie a pasta `uploads` do backup para `src\public\img\uploads`.
 4. Ligue o sistema de novo pelo `iniciar.bat`.
 
+## 11. Usuários e perfis
+
+Em **Usuários** (só para gerentes) dá pra criar logins para a equipe, cada um
+com sua senha e um perfil:
+
+- **Gerente**: acesso total ao painel.
+- **Funcionário**: só vê a tela de **Pedidos** (e pode reimprimir). Ideal para
+  o tablet ou computador do bar.
+
+Também dá pra desativar um usuário (ele perde o acesso na hora, sem precisar
+apagar), trocar a senha de alguém ou excluir. O sistema não deixa ficar sem
+nenhum gerente ativo. Cada pessoa pode trocar a própria senha clicando no
+nome dela, no canto do topo da tela.
+
+O usuário `admin` que já existia virou gerente. Se ele ainda usa a senha
+inicial `admin123`, o Dashboard mostra um aviso para trocar.
+
 ## Estrutura do projeto (caso queira mexer no código depois)
 
 ```
@@ -232,4 +249,3 @@ data/
 
 - Adicionar categoria de "Porções" e a segunda impressora (cozinha), seguindo o
   mesmo padrão já construído.
-- Múltiplos usuários admin, com senhas próprias.

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Minha senha</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
+</head>
+<body>
+  <%- include('../partials/admin-topbar') %>
+  <div class="admin-container" style="max-width:480px;">
+    <h2>Minha senha</h2>
+    <% if (salvo) { %><div class="toast-sucesso">Senha alterada!</div><% } %>
+    <% if (erro) { %><div class="badge badge-erro" style="display:block; padding:10px; margin-bottom:12px;"><%= erro %></div><% } %>
+    <div class="card">
+      <p class="item-desc">Usuário: <strong><%= usuario.usuario %></strong></p>
+      <form method="POST" action="/admin/minha-senha">
+        <label>Senha atual</label>
+        <input type="password" name="senha_atual" required autocomplete="current-password">
+        <label>Senha nova (mínimo 6 caracteres)</label>
+        <input type="password" name="senha_nova" required minlength="6" autocomplete="new-password">
+        <label>Repita a senha nova</label>
+        <input type="password" name="senha_confirma" required minlength="6" autocomplete="new-password">
+        <button class="btn-primario" type="submit">Trocar senha</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

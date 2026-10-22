@@ -16,6 +16,11 @@
         ⚠️ <%= pedidosComErro %> pedido(s) com erro de impressão. Veja em <a href="/admin/pedidos">Pedidos</a>.
       </div>
     <% } %>
+    <% if (senhaPadrao) { %>
+      <div class="card" style="border-left: 4px solid #d33;">
+        ⚠️ Você entrou com a senha inicial (admin123). Troque em <a href="/admin/minha-senha">Minha senha</a>.
+      </div>
+    <% } %>
     <% if (backup.erro || backup.atrasado) { %>
       <div class="card" style="border-left: 4px solid #d33;">
         ⚠️ <%= backup.erro ? 'O último backup falhou.' : 'Nenhum backup nas últimas 24 horas.' %>

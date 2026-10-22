@@ -3,7 +3,8 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const { nanoid } = require('nanoid');
 
-const dbPath = path.join(__dirname, '..', 'data', 'database.sqlite');
+// DB_PATH permite usar outro arquivo (ex: uma cópia pra testes)
+const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'database.sqlite');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
@@ -118,6 +119,17 @@ if (!colunaExiste('categorias', 'imagem')) {
 }
 if (!colunaExiste('itens', 'imagem')) {
   db.exec(`ALTER TABLE itens ADD COLUMN imagem TEXT`);
+}
+// Perfis de usuário: 'gerente' (acesso total) ou 'funcionario' (só pedidos).
+// Usuários que já existiam antes dos perfis viram gerente.
+if (!colunaExiste('admin_users', 'perfil')) {
+  db.exec(`ALTER TABLE admin_users ADD COLUMN perfil TEXT NOT NULL DEFAULT 'gerente'`);
+}
+if (!colunaExiste('admin_users', 'nome')) {
+  db.exec(`ALTER TABLE admin_users ADD COLUMN nome TEXT`);
+}
+if (!colunaExiste('admin_users', 'ativo')) {
+  db.exec(`ALTER TABLE admin_users ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1`);
 }
 
 // ---------- Seed inicial (só roda se não existir nada) ----------

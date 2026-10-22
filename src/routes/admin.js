@@ -23,9 +23,35 @@ const upload = multer({
   }
 });
 
+const PERFIS = { gerente: 'Gerente', funcionario: 'Funcionário' };
+
+// O que o perfil "funcionário" pode acessar; todo o resto é só do gerente.
+const ROTAS_FUNCIONARIO = [
+  /^\/pedidos$/,
+  /^\/pedidos\/\d+\/reimprimir$/,
+  /^\/minha-senha$/
+];
+
+// Recarrega o usuário do banco a cada requisição, pra que desativar alguém
+// ou trocar o perfil valha na hora (sem esperar a sessão expirar).
 function exigirLogin(req, res, next) {
-  if (req.session && req.session.adminLogado) return next();
-  return res.redirect('/admin/login');
+  const id = req.session && req.session.usuarioId;
+  const usuario = id && db.prepare('SELECT * FROM admin_users WHERE id = ? AND ativo = 1').get(id);
+  if (!usuario) {
+    if (req.session) req.session.usuarioId = null;
+    return res.redirect('/admin/login');
+  }
+  req.usuario = usuario;
+  res.locals.usuario = { ...usuario, nomeExibicao: usuario.nome || usuario.usuario, ehGerente: usuario.perfil === 'gerente' };
+  res.locals.perfis = PERFIS;
+  next();
+}
+
+function exigirPerfilPermitido(req, res, next) {
+  if (req.usuario.perfil === 'gerente') return next();
+  if (ROTAS_FUNCIONARIO.some(rx => rx.test(req.path))) return next();
+  if (req.method === 'GET' && req.path === '/') return res.redirect('/admin/pedidos');
+  res.status(403).render('admin/sem-permissao');
 }
 
 // ---------- Login ----------
@@ -35,13 +61,15 @@ router.get('/login', (req, res) => {
 
 router.post('/login', (req, res) => {
   const { usuario, senha } = req.body;
-  const user = db.prepare('SELECT * FROM admin_users WHERE usuario = ?').get(usuario);
+  const user = db.prepare('SELECT * FROM admin_users WHERE usuario = ? AND ativo = 1').get((usuario || '').trim());
   if (!user || !bcrypt.compareSync(senha || '', user.senha_hash)) {
     return res.render('admin/login', { erro: 'Usuário ou senha inválidos.' });
   }
-  req.session.adminLogado = true;
-  req.session.adminUsuario = usuario;
-  res.redirect('/admin');
+  req.session.regenerate(() => {
+    req.session.usuarioId = user.id;
+    req.session.senhaPadrao = senha === 'admin123';
+    res.redirect('/admin');
+  });
 });
 
 router.post('/logout', (req, res) => {
@@ -49,6 +77,102 @@ router.post('/logout', (req, res) => {
 });
 
 router.use(exigirLogin);
+router.use(exigirPerfilPermitido);
+
+// ---------- Minha senha (qualquer perfil) ----------
+router.get('/minha-senha', (req, res) => {
+  res.render('admin/minha-senha', { erro: null, salvo: req.query.salvo === '1' });
+});
+
+router.post('/minha-senha', (req, res) => {
+  const { senha_atual, senha_nova, senha_confirma } = req.body;
+  const erro = !bcrypt.compareSync(senha_atual || '', req.usuario.senha_hash)
+    ? 'Senha atual incorreta.'
+    : validarSenha(senha_nova, senha_confirma);
+  if (erro) return res.render('admin/minha-senha', { erro, salvo: false });
+
+  db.prepare('UPDATE admin_users SET senha_hash = ? WHERE id = ?').run(bcrypt.hashSync(senha_nova, 10), req.usuario.id);
+  req.session.senhaPadrao = false;
+  res.redirect('/admin/minha-senha?salvo=1');
+});
+
+function validarSenha(senha, confirma) {
+  if (!senha || senha.length < 6) return 'A senha precisa ter pelo menos 6 caracteres.';
+  if (senha !== confirma) return 'A confirmação não confere com a senha nova.';
+  return null;
+}
+
+// ---------- Usuários (só gerente) ----------
+function gerentesAtivos(excetoId = 0) {
+  return db
+    .prepare("SELECT COUNT(*) c FROM admin_users WHERE perfil = 'gerente' AND ativo = 1 AND id != ?")
+    .get(excetoId).c;
+}
+
+function voltarUsuarios(res, msg, erro = false) {
+  res.redirect(`/admin/usuarios?${erro ? 'erro' : 'msg'}=${encodeURIComponent(msg)}`);
+}
+
+router.get('/usuarios', (req, res) => {
+  const usuarios = db.prepare('SELECT id, usuario, nome, perfil, ativo FROM admin_users ORDER BY ativo DESC, perfil, usuario').all();
+  res.render('admin/usuarios', { usuarios, msg: req.query.msg || null, erro: req.query.erro || null });
+});
+
+router.post('/usuarios/novo', (req, res) => {
+  const usuario = (req.body.usuario || '').trim().toLowerCase();
+  const nome = (req.body.nome || '').trim();
+  const perfil = PERFIS[req.body.perfil] ? req.body.perfil : 'funcionario';
+  if (!/^[a-z0-9._-]{3,30}$/.test(usuario)) {
+    return voltarUsuarios(res, 'Usuário deve ter de 3 a 30 caracteres: letras sem acento, números, ponto, hífen ou _.', true);
+  }
+  const erroSenha = validarSenha(req.body.senha, req.body.senha_confirma);
+  if (erroSenha) return voltarUsuarios(res, erroSenha, true);
+  if (db.prepare('SELECT 1 FROM admin_users WHERE usuario = ?').get(usuario)) {
+    return voltarUsuarios(res, `Já existe um usuário "${usuario}".`, true);
+  }
+  db.prepare('INSERT INTO admin_users (usuario, nome, perfil, senha_hash) VALUES (?, ?, ?, ?)')
+    .run(usuario, nome || null, perfil, bcrypt.hashSync(req.body.senha, 10));
+  voltarUsuarios(res, `Usuário "${usuario}" criado.`);
+});
+
+router.post('/usuarios/:id/editar', (req, res) => {
+  const alvo = db.prepare('SELECT * FROM admin_users WHERE id = ?').get(req.params.id);
+  if (!alvo) return voltarUsuarios(res, 'Usuário não encontrado.', true);
+  const perfil = PERFIS[req.body.perfil] ? req.body.perfil : alvo.perfil;
+  const ativo = req.body.ativo === '1' ? 1 : 0;
+
+  const deixaDeSerGerenteAtivo = alvo.perfil === 'gerente' && alvo.ativo && (perfil !== 'gerente' || !ativo);
+  if (deixaDeSerGerenteAtivo && gerentesAtivos(alvo.id) === 0) {
+    return voltarUsuarios(res, 'Precisa existir pelo menos um gerente ativo.', true);
+  }
+  if (alvo.id === req.usuario.id && !ativo) {
+    return voltarUsuarios(res, 'Você não pode desativar o próprio usuário.', true);
+  }
+
+  db.prepare('UPDATE admin_users SET nome = ?, perfil = ?, ativo = ? WHERE id = ?')
+    .run((req.body.nome || '').trim() || null, perfil, ativo, alvo.id);
+  voltarUsuarios(res, `Usuário "${alvo.usuario}" atualizado.`);
+});
+
+router.post('/usuarios/:id/senha', (req, res) => {
+  const alvo = db.prepare('SELECT * FROM admin_users WHERE id = ?').get(req.params.id);
+  if (!alvo) return voltarUsuarios(res, 'Usuário não encontrado.', true);
+  const erroSenha = validarSenha(req.body.senha, req.body.senha_confirma);
+  if (erroSenha) return voltarUsuarios(res, erroSenha, true);
+  db.prepare('UPDATE admin_users SET senha_hash = ? WHERE id = ?').run(bcrypt.hashSync(req.body.senha, 10), alvo.id);
+  voltarUsuarios(res, `Senha de "${alvo.usuario}" alterada.`);
+});
+
+router.post('/usuarios/:id/excluir', (req, res) => {
+  const alvo = db.prepare('SELECT * FROM admin_users WHERE id = ?').get(req.params.id);
+  if (!alvo) return voltarUsuarios(res, 'Usuário não encontrado.', true);
+  if (alvo.id === req.usuario.id) return voltarUsuarios(res, 'Você não pode excluir o próprio usuário.', true);
+  if (alvo.perfil === 'gerente' && alvo.ativo && gerentesAtivos(alvo.id) === 0) {
+    return voltarUsuarios(res, 'Precisa existir pelo menos um gerente ativo.', true);
+  }
+  db.prepare('DELETE FROM admin_users WHERE id = ?').run(alvo.id);
+  voltarUsuarios(res, `Usuário "${alvo.usuario}" excluído.`);
+});
 
 // ---------- Dashboard ----------
 router.get('/', (req, res) => {
@@ -65,7 +189,8 @@ router.get('/', (req, res) => {
     totalItens,
     pedidosHoje,
     pedidosComErro,
-    backup: statusBackup()
+    backup: statusBackup(),
+    senhaPadrao: !!req.session.senhaPadrao
   });
 });
 
