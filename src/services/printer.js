@@ -27,6 +27,11 @@ async function imprimirPedido({ mesaNome, itens, pedidoId, criadoEm }) {
   }
 
   thermalPrinter.alignCenter();
+  thermalPrinter.bold(true);
+  thermalPrinter.println(getConfig('nome_restaurante', 'Restaurante').toUpperCase());
+  thermalPrinter.bold(false);
+  thermalPrinter.drawLine();
+
   thermalPrinter.setTextDoubleHeight();
   thermalPrinter.bold(true);
   thermalPrinter.println('PEDIDO - BAR');

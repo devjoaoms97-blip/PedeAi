@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-  <title><%= nomeRestaurante %> - Cardápio</title>
+  <title><%= marca.nome %> - Cardápio</title>
   <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
   <link rel="stylesheet" href="/css/cliente.css">
   <style>
     .modal-overlay {
@@ -36,19 +37,19 @@
     }
     .tile-categoria .icone {
       width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 8px;
-      object-fit: cover; display: block; background: #eaf4ec;
+      object-fit: cover; display: block; background: var(--cor-fundo);
     }
     .tile-categoria .icone-fallback {
       width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 8px;
       display: flex; align-items: center; justify-content: center;
-      background: #eaf4ec; font-size: 24px; color: #1b5e20; font-weight: 700;
+      background: var(--cor-fundo); font-size: 24px; color: var(--cor-primaria); font-weight: 700;
     }
     .tile-categoria .nome-categoria { font-weight: 600; font-size: 14px; }
 
     .tela-categoria { display: none; }
     .tela-categoria.ativa { display: block; }
     .btn-voltar {
-      background: none; border: none; color: #1b5e20; font-weight: 600;
+      background: none; border: none; color: var(--cor-primaria); font-weight: 600;
       font-size: 15px; padding: 8px 0; cursor: pointer;
     }
 
@@ -58,7 +59,7 @@
     .item-icone-fallback {
       width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      background: #eaf4ec; font-size: 20px;
+      background: var(--cor-fundo); font-size: 20px;
     }
 
     .footer-bar { display: flex; gap: 8px; }
@@ -89,9 +90,9 @@
 </head>
 <body class="cliente">
   <div class="topbar">
-    <img class="logo-restaurante" src="/img/logo-pesqueiro.jpg" alt="Logo <%= nomeRestaurante %>">
+    <img class="logo-restaurante" src="<%= marca.logo %>" alt="Logo <%= marca.nome %>">
     <div class="topbar-textos">
-      <div class="topbar-nome"><%= nomeRestaurante %></div>
+      <div class="topbar-nome"><%= marca.nome %></div>
       <div class="topbar-mesa"><%= mesa.nome %></div>
     </div>
   </div>

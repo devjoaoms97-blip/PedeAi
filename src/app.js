@@ -5,6 +5,7 @@ const session = require('express-session');
 
 const customerRoutes = require('./routes/customer');
 const adminRoutes = require('./routes/admin');
+const { getMarca } = require('./services/marca');
 
 const app = express();
 
@@ -20,6 +21,12 @@ app.use(
     cookie: { maxAge: 1000 * 60 * 60 * 8 } // 8 horas
   })
 );
+
+// Nome, logo e cores do restaurante disponíveis em todas as páginas
+app.use((req, res, next) => {
+  res.locals.marca = getMarca();
+  next();
+});
 
 app.get('/', (req, res) => res.redirect('/admin'));
 

@@ -1,12 +1,13 @@
-/* Identidade visual do Pesqueiro São José - aplicado só no cardápio do cliente */
+/* Identidade visual do restaurante no cardápio do cliente. As cores vêm de
+   variáveis definidas em views/partials/marca-estilo.ejs (configuráveis no admin). */
 
 body.cliente {
-  background: linear-gradient(180deg, #eaf4ec 0%, #f7faf5 35%, #ffffff 100%);
+  background: linear-gradient(180deg, var(--cor-fundo) 0%, #f7faf5 35%, #ffffff 100%);
   min-height: 100vh;
 }
 
 body.cliente .topbar {
-  background: linear-gradient(90deg, #1b5e20, #2e7d32);
+  background: linear-gradient(90deg, var(--cor-primaria), var(--cor-primaria-media));
   display: flex;
   align-items: center;
   gap: 10px;
@@ -37,33 +38,33 @@ body.cliente .topbar .topbar-mesa {
 }
 
 body.cliente .item-preco {
-  color: #1b5e20;
+  color: var(--cor-primaria);
   font-weight: 700;
 }
 
 body.cliente .card {
-  border: 1px solid #e3ece3;
+  border: 1px solid var(--cor-borda);
 }
 
 body.cliente .qtd-btn {
-  border-color: #2e7d32;
-  color: #1b5e20;
+  border-color: var(--cor-primaria-media);
+  color: var(--cor-primaria);
 }
 
 body.cliente .btn-primario,
 body.cliente #modal-confirmar {
-  background: #c62828;
+  background: var(--cor-destaque);
 }
 
 body.cliente .btn-primario:disabled {
-  background: #c62828;
+  background: var(--cor-destaque);
   opacity: 0.4;
 }
 
 body.cliente .footer-bar {
-  border-top: 1px solid #e3ece3;
+  border-top: 1px solid var(--cor-borda);
 }
 
 body.cliente h3 {
-  color: #1b5e20;
+  color: var(--cor-primaria);
 }

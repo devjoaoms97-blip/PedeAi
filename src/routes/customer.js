@@ -1,6 +1,5 @@
 const express = require('express');
 const db = require('../db');
-const { getConfig } = require('../services/config');
 const { imprimirPedido } = require('../services/printer');
 
 const router = express.Router();
@@ -38,8 +37,7 @@ router.get('/pedido/:token', carregarMesa, (req, res) => {
 
   res.render('customer/menu', {
     mesa: req.mesa,
-    categorias: categoriasComItens,
-    nomeRestaurante: getConfig('nome_restaurante', 'Restaurante')
+    categorias: categoriasComItens
   });
 });
 

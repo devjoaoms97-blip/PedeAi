@@ -3,11 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - Login</title>
+  <title><%= marca.nome %> - Painel Admin</title>
   <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
 </head>
-<body>
+<body class="tela-login">
   <div class="container" style="padding-top:60px;">
+    <div class="login-marca">
+      <img src="<%= marca.logo %>" alt="Logo <%= marca.nome %>">
+      <div class="login-nome"><%= marca.nome %></div>
+    </div>
     <div class="card">
       <h2>Painel Admin</h2>
       <% if (erro) { %><p style="color:#b3261e"><%= erro %></p><% } %>

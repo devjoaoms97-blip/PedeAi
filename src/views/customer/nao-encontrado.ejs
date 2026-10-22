@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Code inválido</title>
   <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
   <link rel="stylesheet" href="/css/cliente.css">
 </head>
 <body class="cliente">
   <div class="topbar">
-    <img class="logo-restaurante" src="/img/logo-pesqueiro.jpg" alt="Logo Pesqueiro São José">
+    <img class="logo-restaurante" src="<%= marca.logo %>" alt="Logo <%= marca.nome %>">
     <div class="topbar-textos">
-      <div class="topbar-nome">Pesqueiro São José</div>
+      <div class="topbar-nome"><%= marca.nome %></div>
     </div>
   </div>
   <div class="container" style="padding-top:24px;">

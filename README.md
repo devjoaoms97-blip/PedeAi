@@ -162,6 +162,18 @@ Em **Pedidos**, você vê o histórico de tudo que foi pedido, e se algum pedido
 teve problema pra imprimir (impressora desligada, sem papel, etc.) aparece
 destacado com opção de **reimprimir manualmente**.
 
+## 9. Identidade visual (nome, logo e cores)
+
+Em **Configuração → Identidade visual** dá pra trocar o nome do restaurante,
+enviar uma logo nova (ou voltar para a original) e escolher duas cores:
+
+- **Cor principal**: topo das telas, títulos, preços e moldura dos QR codes.
+- **Cor de destaque**: botão "Fazer pedido" do cliente.
+
+Isso vale para o cardápio do cliente, os cartões de QR impressos das mesas, o
+painel admin e a tela de login. O ticket térmico do bar mostra o nome do
+restaurante no topo (a impressora é preto e branco, então só o nome).
+
 ## Estrutura do projeto (caso queira mexer no código depois)
 
 ```
@@ -171,6 +183,7 @@ src/
   services/
     config.js         -> leitura/gravação das configurações (IP impressora etc.)
     printer.js         -> lógica de impressão ESC/POS via rede
+    marca.js           -> nome, logo e cores do restaurante (usados em todas as telas)
   routes/
     customer.js        -> páginas que o cliente vê (cardápio + envio de pedido)
     admin.js            -> painel administrativo
@@ -183,7 +196,6 @@ data/
 ## Próximos passos possíveis (quando quiser)
 
 - Configurar o sistema pra iniciar sozinho com o Windows/Linux (autostart).
-- Trocar o visual pra usar a identidade visual do restaurante.
 - Adicionar categoria de "Porções" e a segunda impressora (cozinha), seguindo o
   mesmo padrão já construído.
 - Múltiplos usuários admin, com senhas próprias.

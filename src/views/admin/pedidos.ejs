@@ -5,21 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Pedidos</title>
   <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
 </head>
 <body>
-  <div class="topbar">
-    <nav class="admin-nav">
-      <a href="/admin">Dashboard</a>
-      <a href="/admin/mesas">Mesas</a>
-      <a href="/admin/cardapio">Cardápio</a>
-      <a href="/admin/opcoes-padrao">Opções padrão</a>
-      <a href="/admin/pedidos">Pedidos</a>
-      <a href="/admin/config">Configuração</a>
-      <form method="POST" action="/admin/logout" style="display:inline">
-        <button type="submit" style="background:none;border:none;color:#fff;opacity:0.85;cursor:pointer;font-size:14px;">Sair</button>
-      </form>
-    </nav>
-  </div>
+  <%- include('../partials/admin-topbar') %>
   <div class="admin-container">
     <h2>Últimos pedidos</h2>
     <% pedidos.forEach(p => { %>

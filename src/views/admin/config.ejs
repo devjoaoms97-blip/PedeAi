@@ -5,29 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin - Configuração</title>
   <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
 </head>
 <body>
-  <div class="topbar">
-    <nav class="admin-nav">
-      <a href="/admin">Dashboard</a>
-      <a href="/admin/mesas">Mesas</a>
-      <a href="/admin/cardapio">Cardápio</a>
-      <a href="/admin/opcoes-padrao">Opções padrão</a>
-      <a href="/admin/pedidos">Pedidos</a>
-      <a href="/admin/config">Configuração</a>
-      <form method="POST" action="/admin/logout" style="display:inline">
-        <button type="submit" style="background:none;border:none;color:#fff;opacity:0.85;cursor:pointer;font-size:14px;">Sair</button>
-      </form>
-    </nav>
-  </div>
+  <%- include('../partials/admin-topbar') %>
   <div class="admin-container">
     <h2>Configuração</h2>
     <% if (salvo) { %><div class="toast-sucesso">Configuração salva!</div><% } %>
     <div class="card">
-      <form method="POST" action="/admin/config">
-        <label>Nome do restaurante (aparece no cardápio do cliente)</label>
-        <input type="text" name="nome_restaurante" value="<%= config.nome_restaurante %>">
+      <h3>Identidade visual</h3>
+      <p class="item-desc">Nome, logo e cores aparecem no cardápio do cliente, nos QR codes das mesas, no painel admin e no ticket impresso (só o nome).</p>
+      <form method="POST" action="/admin/config/marca" enctype="multipart/form-data">
+        <label>Nome do restaurante</label>
+        <input type="text" name="nome_restaurante" value="<%= marca.nome %>">
 
+        <label>Logo</label>
+        <div class="form-inline" style="align-items:center; margin-bottom:10px;">
+          <img class="logo-config" src="<%= marca.logo %>" alt="Logo atual">
+          <div>
+            <input type="file" name="logo" accept="image/*">
+            <span class="item-desc">Envie uma imagem nova para trocar. Ela é cortada em quadrado e exibida em círculo.</span>
+          </div>
+        </div>
+        <% if (marca.logo !== logoPadrao) { %>
+          <label style="display:flex; gap:6px; align-items:center;">
+            <input type="checkbox" name="restaurar_logo" value="1"> Voltar para a logo original
+          </label>
+        <% } %>
+
+        <div class="linha-cores">
+          <div>
+            <label>Cor principal (topo, títulos, preços)</label>
+            <input type="color" name="cor_primaria" value="<%= marca.corPrimaria %>">
+          </div>
+          <div>
+            <label>Cor de destaque (botão "Fazer pedido")</label>
+            <input type="color" name="cor_destaque" value="<%= marca.corDestaque %>">
+          </div>
+        </div>
+
+        <button class="btn-primario" type="submit">Salvar identidade visual</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Impressora e rede</h3>
+      <form method="POST" action="/admin/config">
         <label>IP da impressora do bar (rede local)</label>
         <input type="text" name="printer_ip" value="<%= config.printer_ip %>" placeholder="Ex: 192.168.0.50">
 

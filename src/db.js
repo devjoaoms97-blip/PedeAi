@@ -126,7 +126,10 @@ function seed() {
     printer_ip: '',
     printer_port: '9100',
     base_url: 'http://192.168.0.100:3000',
-    nome_restaurante: 'Pesqueiro São José'
+    nome_restaurante: 'Pesqueiro São José',
+    logo_url: '/img/logo-pesqueiro.jpg',
+    cor_primaria: '#1b5e20',
+    cor_destaque: '#c62828'
   };
   const insertConfig = db.prepare('INSERT OR IGNORE INTO config (chave, valor) VALUES (?, ?)');
   for (const [chave, valor] of Object.entries(configDefaults)) {

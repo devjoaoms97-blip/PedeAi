@@ -7,6 +7,7 @@ const db = require('../db');
 const { getAllConfig, setConfig } = require('../services/config');
 const { imprimirPedido } = require('../services/printer');
 const { salvarImagemQuadrada, excluirImagem } = require('../services/uploads');
+const { corValida, LOGO_PADRAO } = require('../services/marca');
 
 const router = express.Router();
 router.use(express.urlencoded({ extended: true }));
@@ -379,15 +380,36 @@ router.post('/pedidos/:id/reimprimir', async (req, res) => {
 
 // ---------- Configuração ----------
 router.get('/config', (req, res) => {
-  res.render('admin/config', { config: getAllConfig(), salvo: req.query.salvo === '1' });
+  res.render('admin/config', {
+    config: getAllConfig(),
+    salvo: req.query.salvo === '1',
+    logoPadrao: LOGO_PADRAO
+  });
 });
 
 router.post('/config', (req, res) => {
-  const { printer_ip, printer_port, base_url, nome_restaurante } = req.body;
+  const { printer_ip, printer_port, base_url } = req.body;
   setConfig('printer_ip', (printer_ip || '').trim());
   setConfig('printer_port', (printer_port || '9100').trim());
   setConfig('base_url', (base_url || '').trim().replace(/\/$/, ''));
-  setConfig('nome_restaurante', (nome_restaurante || 'Restaurante').trim());
+  res.redirect('/admin/config?salvo=1');
+});
+
+router.post('/config/marca', upload.single('logo'), async (req, res) => {
+  const { nome_restaurante, cor_primaria, cor_destaque, restaurar_logo } = req.body;
+  setConfig('nome_restaurante', (nome_restaurante || '').trim() || 'Restaurante');
+  if (corValida(cor_primaria)) setConfig('cor_primaria', cor_primaria);
+  if (corValida(cor_destaque)) setConfig('cor_destaque', cor_destaque);
+
+  const logoAtual = getAllConfig().logo_url;
+  if (req.file) {
+    excluirImagem(logoAtual);
+    setConfig('logo_url', await salvarImagemQuadrada(req.file.buffer));
+  } else if (restaurar_logo === '1') {
+    excluirImagem(logoAtual);
+    setConfig('logo_url', LOGO_PADRAO);
+  }
+
   res.redirect('/admin/config?salvo=1');
 });
 
