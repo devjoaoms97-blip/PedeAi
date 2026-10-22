@@ -76,9 +76,20 @@ pedindo ajuste).
 no ar, do mesmo jeito que um servidor .exe rodando em segundo plano. Se
 fechar essa janela, o cardápio para de funcionar até você abrir de novo.
 
-Se quiser que ele inicie sozinho com o Windows (sem precisar clicar todo
-dia), me avise depois que eu te ajudo a configurar isso (criando um atalho
-na pasta de Inicialização do Windows), não é obrigatório agora.
+Se o sistema parar por algum erro, a própria janela religa ele sozinha depois
+de 5 segundos. E se você abrir o `iniciar.bat` com o sistema já ligado, ele
+avisa e não abre uma segunda cópia.
+
+### Ligar sozinho junto com o Windows
+
+Dê duplo-clique **uma vez** em **`ativar-inicio-automatico.bat`**. A partir daí,
+sempre que o notebook ligar e alguém entrar no Windows, o sistema abre sozinho
+com a janela minimizada na barra de tarefas. Para desfazer, use
+**`desativar-inicio-automatico.bat`**.
+
+Observação: o sistema só liga depois que alguém entra no usuário do Windows. Se
+o notebook pede senha ao ligar, alguém precisa digitá-la (ou dá pra configurar
+o Windows pra entrar automaticamente, se fizer sentido para vocês).
 
 ## 5. Primeiro acesso ao painel admin
 
@@ -174,6 +185,29 @@ Isso vale para o cardápio do cliente, os cartões de QR impressos das mesas, o
 painel admin e a tela de login. O ticket térmico do bar mostra o nome do
 restaurante no topo (a impressora é preto e branco, então só o nome).
 
+## 10. Backup automático
+
+Uma vez por dia (e logo ao ligar, se já passou um dia desde o último), o sistema
+copia o banco de dados e as imagens enviadas para a pasta escolhida em
+**Configuração → Backup automático**. Cada cópia fica numa pasta com a data
+(ex: `backup-2026-10-21_211543`) e só as últimas cópias são mantidas (14 por
+padrão). Também tem o botão **"Fazer backup agora"**.
+
+Se nenhuma pasta for escolhida, os backups vão para a pasta `backups` dentro
+do projeto, no próprio notebook. Isso protege contra erro no banco, mas não se
+o notebook quebrar ou sumir. Por isso, o recomendado é usar uma pasta do
+**Google Drive ou OneDrive sincronizada** no notebook (ex:
+`C:\Users\<usuário>\Google Drive\Backups Pedidos`) ou um pendrive. O Dashboard
+avisa se o backup falhar ou se estiver indo para a pasta padrão.
+
+**Para restaurar um backup:**
+1. Feche a janela do sistema.
+2. Copie o `database.sqlite` da pasta do backup para a pasta `data` do projeto,
+   substituindo o atual (apague também `database.sqlite-shm` e
+   `database.sqlite-wal` se existirem).
+3. Copie a pasta `uploads` do backup para `src\public\img\uploads`.
+4. Ligue o sistema de novo pelo `iniciar.bat`.
+
 ## Estrutura do projeto (caso queira mexer no código depois)
 
 ```
@@ -184,6 +218,7 @@ src/
     config.js         -> leitura/gravação das configurações (IP impressora etc.)
     printer.js         -> lógica de impressão ESC/POS via rede
     marca.js           -> nome, logo e cores do restaurante (usados em todas as telas)
+    backup.js          -> backup diário do banco e das imagens
   routes/
     customer.js        -> páginas que o cliente vê (cardápio + envio de pedido)
     admin.js            -> painel administrativo
@@ -195,7 +230,6 @@ data/
 
 ## Próximos passos possíveis (quando quiser)
 
-- Configurar o sistema pra iniciar sozinho com o Windows/Linux (autostart).
 - Adicionar categoria de "Porções" e a segunda impressora (cozinha), seguindo o
   mesmo padrão já construído.
 - Múltiplos usuários admin, com senhas próprias.

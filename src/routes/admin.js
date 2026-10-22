@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
@@ -8,6 +10,7 @@ const { getAllConfig, setConfig } = require('../services/config');
 const { imprimirPedido } = require('../services/printer');
 const { salvarImagemQuadrada, excluirImagem } = require('../services/uploads');
 const { corValida, LOGO_PADRAO } = require('../services/marca');
+const { fazerBackup, statusBackup } = require('../services/backup');
 
 const router = express.Router();
 router.use(express.urlencoded({ extended: true }));
@@ -57,7 +60,13 @@ router.get('/', (req, res) => {
   const pedidosComErro = db
     .prepare('SELECT COUNT(*) c FROM pedidos WHERE erro_impressao IS NOT NULL AND impresso = 0')
     .get().c;
-  res.render('admin/dashboard', { totalMesas, totalItens, pedidosHoje, pedidosComErro });
+  res.render('admin/dashboard', {
+    totalMesas,
+    totalItens,
+    pedidosHoje,
+    pedidosComErro,
+    backup: statusBackup()
+  });
 });
 
 // ---------- Mesas ----------
@@ -383,8 +392,38 @@ router.get('/config', (req, res) => {
   res.render('admin/config', {
     config: getAllConfig(),
     salvo: req.query.salvo === '1',
-    logoPadrao: LOGO_PADRAO
+    logoPadrao: LOGO_PADRAO,
+    backup: statusBackup(),
+    backupMsg: req.query.backup || null
   });
+});
+
+router.post('/config/backup', (req, res) => {
+  const pasta = (req.body.backup_pasta || '').trim();
+  if (pasta) {
+    if (!path.isAbsolute(pasta)) {
+      return res.redirect('/admin/config?backup=' + encodeURIComponent('Informe o caminho completo da pasta, ex: C:\\Users\\Nome\\Google Drive\\Backups'));
+    }
+    try {
+      fs.mkdirSync(pasta, { recursive: true });
+      fs.accessSync(pasta, fs.constants.W_OK);
+    } catch (err) {
+      return res.redirect('/admin/config?backup=' + encodeURIComponent(`Não foi possível usar a pasta: ${err.message}`));
+    }
+  }
+  setConfig('backup_pasta', pasta);
+  const manter = Math.min(365, Math.max(1, parseInt(req.body.backup_manter, 10) || 14));
+  setConfig('backup_manter', manter);
+  res.redirect('/admin/config?salvo=1');
+});
+
+router.post('/config/backup/agora', async (req, res) => {
+  try {
+    const destino = await fazerBackup();
+    res.redirect('/admin/config?backup=' + encodeURIComponent(`Backup feito: ${destino}`));
+  } catch (err) {
+    res.redirect('/admin/config?backup=' + encodeURIComponent(`Falha no backup: ${err.message}`));
+  }
 });
 
 router.post('/config', (req, res) => {

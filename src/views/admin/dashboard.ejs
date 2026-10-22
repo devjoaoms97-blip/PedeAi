@@ -16,6 +16,16 @@
         ⚠️ <%= pedidosComErro %> pedido(s) com erro de impressão. Veja em <a href="/admin/pedidos">Pedidos</a>.
       </div>
     <% } %>
+    <% if (backup.erro || backup.atrasado) { %>
+      <div class="card" style="border-left: 4px solid #d33;">
+        ⚠️ <%= backup.erro ? 'O último backup falhou.' : 'Nenhum backup nas últimas 24 horas.' %>
+        Veja em <a href="/admin/config#backup">Configuração</a>.
+      </div>
+    <% } else if (backup.usandoPastaPadrao) { %>
+      <div class="card" style="border-left: 4px solid #e0a800;">
+        Os backups estão sendo salvos no próprio notebook. Escolha uma pasta na nuvem ou um pendrive em <a href="/admin/config#backup">Configuração</a>.
+      </div>
+    <% } %>
     <div style="display:flex; gap:12px; flex-wrap:wrap;">
       <div class="card" style="flex:1; min-width:140px;">
         <div class="item-desc">Mesas ativas</div>

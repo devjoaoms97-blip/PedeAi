@@ -3,3 +3,4 @@ data/database.sqlite
 data/database.sqlite-*
 .env
 src/public/img/uploads/
+backups/

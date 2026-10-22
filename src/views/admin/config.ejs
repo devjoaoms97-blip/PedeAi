@@ -63,6 +63,30 @@
         <button class="btn-primario" type="submit">Salvar</button>
       </form>
     </div>
+
+    <div class="card" id="backup">
+      <h3>Backup automático</h3>
+      <p class="item-desc">Uma vez por dia o sistema copia o banco de dados (cardápio, mesas, pedidos, configurações) e as imagens enviadas para a pasta abaixo, guardando só as últimas cópias.</p>
+      <% if (backupMsg) { %><div class="toast-sucesso" style="word-break:break-all;"><%= backupMsg %></div><% } %>
+      <% if (backup.erro) { %><div class="badge badge-erro" style="display:block; padding:8px; margin-bottom:10px;">Último erro: <%= backup.erro %></div><% } %>
+      <p>
+        <strong>Último backup:</strong>
+        <%= backup.ultimo ? new Date(backup.ultimo).toLocaleString('pt-BR') : 'nenhum ainda' %>
+      </p>
+      <form method="POST" action="/admin/config/backup">
+        <label>Pasta de destino (caminho completo)</label>
+        <input type="text" name="backup_pasta" value="<%= backup.usandoPastaPadrao ? '' : backup.pasta %>" placeholder="<%= backup.pastaPadrao %>">
+        <% if (backup.usandoPastaPadrao) { %>
+          <p class="item-desc" style="color:#b3261e;">⚠️ Usando a pasta padrão, no próprio notebook. Se o notebook der problema, o backup se perde junto. Prefira uma pasta do Google Drive/OneDrive sincronizada ou um pendrive.</p>
+        <% } %>
+        <label>Quantas cópias manter</label>
+        <input type="number" name="backup_manter" min="1" max="365" value="<%= backup.manter %>">
+        <button class="btn-primario" type="submit">Salvar backup</button>
+      </form>
+      <form method="POST" action="/admin/config/backup/agora" style="margin-top:8px;">
+        <button class="btn-secundario" type="submit">Fazer backup agora</button>
+      </form>
+    </div>
     <div class="card">
       <strong>Como descobrir o IP da impressora:</strong>
       <p>Na maioria das impressoras térmicas com rede (LAN), dá pra imprimir uma "página de teste/configuração de rede" segurando o botão de alimentação de papel ligando o equipamento, ou verificando o menu de rede se ela tiver display. O IP costuma aparecer nessa folha impressa.</p>
