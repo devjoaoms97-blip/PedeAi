@@ -49,8 +49,16 @@
     </div>
 
     <div class="card">
-      <h3>Impressora e rede</h3>
+      <h3>Pedidos, impressora e rede</h3>
       <form method="POST" action="/admin/config">
+        <label>Para onde vão os pedidos novos</label>
+        <select name="modo_pedidos">
+          <option value="impressora" <%= config.modo_pedidos === 'impressora' ? 'selected' : '' %>>Só impressora do bar</option>
+          <option value="tela" <%= config.modo_pedidos === 'tela' ? 'selected' : '' %>>Só painel na tela (sem imprimir)</option>
+          <option value="ambos" <%= config.modo_pedidos === 'ambos' ? 'selected' : '' %>>Impressora e painel na tela</option>
+        </select>
+        <p class="item-desc" style="margin-top:-4px;">O painel do bar (menu "Painel do bar") mostra os pedidos chegando em tempo real, com aviso sonoro e botão "Entregue". Abra num tablet ou no computador do bar.</p>
+
         <label>IP da impressora do bar (rede local)</label>
         <input type="text" name="printer_ip" value="<%= config.printer_ip %>" placeholder="Ex: 192.168.0.50">
 

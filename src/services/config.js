@@ -18,4 +18,15 @@ function getAllConfig() {
   return out;
 }
 
-module.exports = { getConfig, setConfig, getAllConfig };
+// Para onde vão os pedidos novos: 'impressora', 'tela' (painel do bar) ou 'ambos'
+const MODOS_PEDIDOS = ['impressora', 'tela', 'ambos'];
+
+function modoPedidos() {
+  const modo = getConfig('modo_pedidos', 'impressora');
+  return MODOS_PEDIDOS.includes(modo) ? modo : 'impressora';
+}
+
+const usaImpressora = () => modoPedidos() !== 'tela';
+const usaTela = () => modoPedidos() !== 'impressora';
+
+module.exports = { getConfig, setConfig, getAllConfig, modoPedidos, usaImpressora, usaTela, MODOS_PEDIDOS };

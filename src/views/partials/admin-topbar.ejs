@@ -10,6 +10,7 @@
         <a href="/admin/cardapio">Cardápio</a>
         <a href="/admin/opcoes-padrao">Opções padrão</a>
       <% } %>
+      <% if (painelAtivo) { %><a href="/admin/painel">Painel do bar</a><% } %>
       <a href="/admin/pedidos">Pedidos</a>
       <% if (usuario.ehGerente) { %>
         <a href="/admin/usuarios">Usuários</a>

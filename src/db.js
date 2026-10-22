@@ -128,6 +128,10 @@ if (!colunaExiste('admin_users', 'perfil')) {
 if (!colunaExiste('admin_users', 'nome')) {
   db.exec(`ALTER TABLE admin_users ADD COLUMN nome TEXT`);
 }
+// Painel do bar: pedidos vão de status 'novo' para 'entregue'
+if (!colunaExiste('pedidos', 'entregue_em')) {
+  db.exec(`ALTER TABLE pedidos ADD COLUMN entregue_em TEXT`);
+}
 if (!colunaExiste('admin_users', 'ativo')) {
   db.exec(`ALTER TABLE admin_users ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1`);
 }
@@ -139,6 +143,7 @@ function seed() {
     printer_port: '9100',
     base_url: 'http://192.168.0.100:3000',
     nome_restaurante: 'Pesqueiro São José',
+    modo_pedidos: 'impressora', // 'impressora', 'tela' (painel do bar) ou 'ambos'
     logo_url: '/img/logo-pesqueiro.jpg',
     cor_primaria: '#1b5e20',
     cor_destaque: '#c62828'

@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const QRCode = require('qrcode');
 const { nanoid } = require('nanoid');
 const db = require('../db');
-const { getAllConfig, setConfig } = require('../services/config');
+const { getAllConfig, setConfig, usaTela, MODOS_PEDIDOS } = require('../services/config');
 const { imprimirPedido } = require('../services/printer');
 const { salvarImagemQuadrada, excluirImagem } = require('../services/uploads');
 const { corValida, LOGO_PADRAO } = require('../services/marca');
@@ -29,6 +29,7 @@ const PERFIS = { gerente: 'Gerente', funcionario: 'Funcionário' };
 const ROTAS_FUNCIONARIO = [
   /^\/pedidos$/,
   /^\/pedidos\/\d+\/reimprimir$/,
+  /^\/painel(\/dados|\/\d+\/(entregue|reabrir))?$/,
   /^\/minha-senha$/
 ];
 
@@ -44,13 +45,14 @@ function exigirLogin(req, res, next) {
   req.usuario = usuario;
   res.locals.usuario = { ...usuario, nomeExibicao: usuario.nome || usuario.usuario, ehGerente: usuario.perfil === 'gerente' };
   res.locals.perfis = PERFIS;
+  res.locals.painelAtivo = usaTela();
   next();
 }
 
 function exigirPerfilPermitido(req, res, next) {
   if (req.usuario.perfil === 'gerente') return next();
   if (ROTAS_FUNCIONARIO.some(rx => rx.test(req.path))) return next();
-  if (req.method === 'GET' && req.path === '/') return res.redirect('/admin/pedidos');
+  if (req.method === 'GET' && req.path === '/') return res.redirect(usaTela() ? '/admin/painel' : '/admin/pedidos');
   res.status(403).render('admin/sem-permissao');
 }
 
@@ -494,6 +496,43 @@ router.get('/pedidos', (req, res) => {
   res.render('admin/pedidos', { pedidos: pedidosComItens });
 });
 
+// ---------- Painel do bar (pedidos em tempo real) ----------
+router.get('/painel', (req, res) => {
+  res.render('admin/painel');
+});
+
+// Consultado pela tela do painel a cada poucos segundos. Mostra só pedidos das
+// últimas 12h, pra pedidos antigos nunca marcados como entregues não poluírem a tela.
+router.get('/painel/dados', (req, res) => {
+  const buscar = (status, ordem, limite) =>
+    db.prepare(
+      `SELECT p.id, p.status, p.criado_em, p.entregue_em, p.impresso, p.erro_impressao, m.nome AS mesa_nome
+       FROM pedidos p JOIN mesas m ON m.id = p.mesa_id
+       WHERE p.status = ? AND p.criado_em >= datetime('now', '-12 hours')
+       ORDER BY ${ordem} LIMIT ${limite}`
+    ).all(status);
+  const itensStmt = db.prepare(
+    'SELECT quantidade, nome_item, opcoes_texto, observacao FROM pedido_itens WHERE pedido_id = ?'
+  );
+  const completar = p => ({ ...p, itens: itensStmt.all(p.id) });
+
+  res.json({
+    agora: new Date().toISOString(),
+    novos: buscar('novo', 'p.id ASC', 100).map(completar),
+    entregues: buscar('entregue', 'p.entregue_em DESC', 8).map(completar)
+  });
+});
+
+router.post('/painel/:id/entregue', (req, res) => {
+  db.prepare("UPDATE pedidos SET status = 'entregue', entregue_em = datetime('now') WHERE id = ?").run(req.params.id);
+  res.json({ ok: true });
+});
+
+router.post('/painel/:id/reabrir', (req, res) => {
+  db.prepare("UPDATE pedidos SET status = 'novo', entregue_em = NULL WHERE id = ?").run(req.params.id);
+  res.json({ ok: true });
+});
+
 router.post('/pedidos/:id/reimprimir', async (req, res) => {
   const pedido = db.prepare('SELECT * FROM pedidos WHERE id = ?').get(req.params.id);
   const mesa = db.prepare('SELECT * FROM mesas WHERE id = ?').get(pedido.mesa_id);
@@ -552,7 +591,8 @@ router.post('/config/backup/agora', async (req, res) => {
 });
 
 router.post('/config', (req, res) => {
-  const { printer_ip, printer_port, base_url } = req.body;
+  const { printer_ip, printer_port, base_url, modo_pedidos } = req.body;
+  if (MODOS_PEDIDOS.includes(modo_pedidos)) setConfig('modo_pedidos', modo_pedidos);
   setConfig('printer_ip', (printer_ip || '').trim());
   setConfig('printer_port', (printer_port || '9100').trim());
   setConfig('base_url', (base_url || '').trim().replace(/\/$/, ''));

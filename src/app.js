@@ -19,6 +19,7 @@ app.use(
     secret: process.env.SESSION_SECRET || 'troque-este-segredo-em-producao',
     resave: false,
     saveUninitialized: false,
+    rolling: true, // renova as 8h a cada uso: o painel do bar não desloga no meio do expediente
     cookie: { maxAge: 1000 * 60 * 60 * 8 } // 8 horas
   })
 );

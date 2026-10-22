@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel do bar - <%= marca.nome %></title>
+  <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
+  <style>
+    .painel-container { padding: 16px; }
+    .painel-status {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .painel-status h2 { margin: 0; color: var(--cor-primaria); }
+    .contador {
+      background: var(--cor-destaque); color: #fff; border-radius: 20px;
+      padding: 2px 12px; font-weight: 700; font-size: 18px;
+    }
+    .conexao { font-size: 13px; color: #666; }
+    .conexao.erro { color: #b3261e; font-weight: 600; }
+    .painel-status .btn-secundario { margin-left: auto; }
+
+    .grade-pedidos {
+      display: grid; gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    }
+    .pedido {
+      background: #fff; border-radius: 10px; padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border-top: 6px solid var(--cor-primaria);
+      display: flex; flex-direction: column;
+    }
+    .pedido.atencao { border-top-color: #e0a800; }
+    .pedido.atrasado { border-top-color: #d33; }
+    .pedido.chegou { animation: piscar 1s ease-in-out 3; }
+    @keyframes piscar { 50% { background: var(--cor-fundo); } }
+
+    .pedido-topo { display: flex; justify-content: space-between; align-items: baseline; }
+    .pedido-mesa { font-size: 24px; font-weight: 800; }
+    .pedido-tempo { font-size: 15px; font-weight: 700; color: #555; }
+    .pedido.atencao .pedido-tempo { color: #9a7400; }
+    .pedido.atrasado .pedido-tempo { color: #d33; }
+    .pedido-numero { font-size: 12px; color: #888; margin-bottom: 6px; }
+    .pedido ul { list-style: none; padding: 0; margin: 0 0 12px; flex: 1; }
+    .pedido li { padding: 6px 0; border-bottom: 1px dashed #e2e2e2; font-size: 17px; }
+    .pedido li:last-child { border-bottom: none; }
+    .pedido .qtd { font-weight: 800; }
+    .pedido .detalhe { display: block; font-size: 14px; color: #555; margin-top: 2px; }
+    .pedido .obs { color: #b3261e; }
+    .aviso-impressao { font-size: 12px; color: #b3261e; margin-bottom: 8px; }
+    .btn-entregue {
+      width: 100%; padding: 16px; font-size: 18px; font-weight: 700; border: none;
+      border-radius: 8px; background: var(--cor-primaria); color: #fff; cursor: pointer;
+    }
+    .btn-entregue:disabled { opacity: 0.5; }
+
+    .vazio { text-align: center; color: #777; padding: 48px 16px; font-size: 18px; }
+
+    .entregues { margin-top: 24px; }
+    .entregues h3 { color: #555; font-size: 15px; }
+    .entregue-linha {
+      display: flex; align-items: center; gap: 12px; padding: 8px 12px;
+      background: #fff; border-radius: 8px; margin-bottom: 6px; font-size: 14px;
+    }
+    .entregue-linha .resumo { flex: 1; color: #555; }
+  </style>
+</head>
+<body>
+  <%- include('../partials/admin-topbar') %>
+  <div class="painel-container">
+    <div class="painel-status">
+      <h2>Pedidos para entregar</h2>
+      <span class="contador" id="contador">0</span>
+      <span class="conexao" id="conexao">Conectando...</span>
+      <button class="btn-secundario" id="btn-som" type="button">🔇 Ativar som</button>
+    </div>
+
+    <div class="grade-pedidos" id="grade"></div>
+    <div class="vazio" id="vazio" hidden>Nenhum pedido esperando. 🎉</div>
+
+    <div class="entregues" id="entregues" hidden>
+      <h3>Entregues recentemente</h3>
+      <div id="lista-entregues"></div>
+    </div>
+  </div>
+
+  <script>
+    const INTERVALO_MS = 4000;
+    const MIN_ATENCAO = 5;   // borda amarela
+    const MIN_ATRASADO = 10; // borda vermelha
+
+    const grade = document.getElementById('grade');
+    const vazio = document.getElementById('vazio');
+    const contador = document.getElementById('contador');
+    const conexao = document.getElementById('conexao');
+    const btnSom = document.getElementById('btn-som');
+    const blocoEntregues = document.getElementById('entregues');
+    const listaEntregues = document.getElementById('lista-entregues');
+
+    let idsConhecidos = null; // null = primeira carga (não toca som pelos pedidos que já estavam lá)
+    let somAtivo = false;
+    let audioCtx = null;
+    let diferencaRelogio = 0; // servidor - navegador, pra calcular o tempo de espera certo
+
+    // ---------- Som (navegadores só liberam áudio depois de um toque na tela) ----------
+    btnSom.addEventListener('click', () => {
+      somAtivo = !somAtivo;
+      if (somAtivo && !audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      btnSom.textContent = somAtivo ? '🔔 Som ligado' : '🔇 Ativar som';
+      if (somAtivo) tocarAviso();
+    });
+
+    function tocarAviso() {
+      if (!somAtivo || !audioCtx) return;
+      [0, 0.25].forEach((atraso, i) => {
+        const osc = audioCtx.createOscillator();
+        const ganho = audioCtx.createGain();
+        osc.frequency.value = i === 0 ? 880 : 1175;
+        ganho.gain.setValueAtTime(0.3, audioCtx.currentTime + atraso);
+        ganho.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + atraso + 0.22);
+        osc.connect(ganho).connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + atraso);
+        osc.stop(audioCtx.currentTime + atraso + 0.22);
+      });
+    }
+
+    // ---------- Manter a tela do tablet acesa ----------
+    async function manterTelaAcesa() {
+      try { if ('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch (e) {}
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') manterTelaAcesa();
+    });
+    manterTelaAcesa();
+
+    // ---------- Montagem dos cartões ----------
+    const dataUtc = texto => new Date(texto.replace(' ', 'T') + 'Z');
+
+    function minutosEsperando(pedido) {
+      return Math.max(0, Math.floor((Date.now() + diferencaRelogio - dataUtc(pedido.criado_em)) / 60000));
+    }
+
+    function el(tag, classe, texto) {
+      const e = document.createElement(tag);
+      if (classe) e.className = classe;
+      if (texto != null) e.textContent = texto;
+      return e;
+    }
+
+    function cartaoPedido(pedido, novo) {
+      const min = minutosEsperando(pedido);
+      const card = el('div', 'pedido');
+      if (min >= MIN_ATRASADO) card.classList.add('atrasado');
+      else if (min >= MIN_ATENCAO) card.classList.add('atencao');
+      if (novo) card.classList.add('chegou');
+
+      const topo = el('div', 'pedido-topo');
+      topo.append(el('span', 'pedido-mesa', pedido.mesa_nome));
+      topo.append(el('span', 'pedido-tempo', min === 0 ? 'agora' : `${min} min`));
+      card.append(topo);
+      card.append(el('div', 'pedido-numero', `Pedido #${pedido.id}`));
+
+      const ul = el('ul');
+      pedido.itens.forEach(it => {
+        const li = el('li');
+        li.append(el('span', 'qtd', `${it.quantidade}x `), document.createTextNode(it.nome_item));
+        if (it.opcoes_texto) li.append(el('span', 'detalhe', it.opcoes_texto));
+        if (it.observacao) li.append(el('span', 'detalhe obs', `obs: ${it.observacao}`));
+        ul.append(li);
+      });
+      card.append(ul);
+
+      if (pedido.erro_impressao && !pedido.impresso) {
+        card.append(el('div', 'aviso-impressao', '⚠️ Não foi impresso'));
+      }
+
+      const botao = el('button', 'btn-entregue', '✓ Entregue');
+      botao.type = 'button';
+      botao.addEventListener('click', async () => {
+        botao.disabled = true;
+        const ok = await enviar(`/admin/painel/${pedido.id}/entregue`);
+        if (ok) card.remove(); else botao.disabled = false;
+        atualizar();
+      });
+      card.append(botao);
+      return card;
+    }
+
+    function linhaEntregue(pedido) {
+      const linha = el('div', 'entregue-linha');
+      const resumo = pedido.itens.map(it => `${it.quantidade}x ${it.nome_item}`).join(', ');
+      linha.append(el('strong', null, pedido.mesa_nome));
+      linha.append(el('span', 'resumo', `#${pedido.id} · ${resumo}`));
+      const desfazer = el('button', 'btn-secundario btn-mini', 'Desfazer');
+      desfazer.type = 'button';
+      desfazer.addEventListener('click', async () => {
+        desfazer.disabled = true;
+        await enviar(`/admin/painel/${pedido.id}/reabrir`);
+        atualizar();
+      });
+      linha.append(desfazer);
+      return linha;
+    }
+
+    // ---------- Comunicação com o servidor ----------
+    function sessaoExpirada(resp) {
+      return resp.redirected || !(resp.headers.get('content-type') || '').includes('application/json');
+    }
+
+    async function enviar(url) {
+      try {
+        const resp = await fetch(url, { method: 'POST', headers: { Accept: 'application/json' } });
+        if (sessaoExpirada(resp)) { window.location.href = '/admin/login'; return false; }
+        return resp.ok;
+      } catch (e) {
+        conexao.textContent = 'Sem conexão com o sistema. Tente de novo.';
+        conexao.className = 'conexao erro';
+        return false;
+      }
+    }
+
+    async function atualizar() {
+      let dados;
+      try {
+        const resp = await fetch('/admin/painel/dados', { headers: { Accept: 'application/json' } });
+        if (sessaoExpirada(resp)) { window.location.href = '/admin/login'; return; }
+        dados = await resp.json();
+      } catch (e) {
+        conexao.textContent = '⚠️ Sem conexão com o sistema — tentando de novo...';
+        conexao.className = 'conexao erro';
+        return;
+      }
+
+      diferencaRelogio = new Date(dados.agora) - Date.now();
+      conexao.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
+      conexao.className = 'conexao';
+
+      const idsAtuais = new Set(dados.novos.map(p => p.id));
+      const chegaram = idsConhecidos ? dados.novos.filter(p => !idsConhecidos.has(p.id)) : [];
+      if (chegaram.length > 0) tocarAviso();
+
+      grade.replaceChildren(...dados.novos.map(p => cartaoPedido(p, chegaram.includes(p))));
+      vazio.hidden = dados.novos.length > 0;
+      contador.textContent = dados.novos.length;
+      document.title = (dados.novos.length ? `(${dados.novos.length}) ` : '') + 'Painel do bar';
+
+      listaEntregues.replaceChildren(...dados.entregues.map(linhaEntregue));
+      blocoEntregues.hidden = dados.entregues.length === 0;
+
+      idsConhecidos = idsAtuais;
+    }
+
+    atualizar();
+    setInterval(atualizar, INTERVALO_MS);
+  </script>
+</body>
+</html>

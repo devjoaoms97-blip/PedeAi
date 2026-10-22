@@ -15,8 +15,13 @@
       <div class="card">
         <div style="display:flex; justify-content:space-between;">
           <strong>#<%= p.id %> · <%= p.mesa_nome %></strong>
-          <span class="badge <%= p.impresso ? 'badge-ok' : 'badge-erro' %>">
-            <%= p.impresso ? 'Impresso' : 'Não impresso' %>
+          <span>
+            <% if (p.status === 'entregue') { %><span class="badge badge-ok">Entregue</span><% } %>
+            <% if (p.impresso || p.erro_impressao) { %>
+              <span class="badge <%= p.impresso ? 'badge-ok' : 'badge-erro' %>">
+                <%= p.impresso ? 'Impresso' : 'Não impresso' %>
+              </span>
+            <% } %>
           </span>
         </div>
         <div class="item-desc"><%= p.criado_em %></div>

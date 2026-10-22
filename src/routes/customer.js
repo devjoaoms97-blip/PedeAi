@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { imprimirPedido } = require('../services/printer');
+const { usaImpressora, usaTela } = require('../services/config');
 
 const router = express.Router();
 
@@ -125,6 +126,9 @@ router.post('/pedido/:token', carregarMesa, express.json(), async (req, res) => 
 
   const pedidoId = criarPedido();
 
+  // Modo "só tela": o pedido aparece no painel do bar, sem imprimir
+  if (!usaImpressora()) return res.json({ ok: true, pedidoId });
+
   const itensParaImpressao = db
     .prepare('SELECT * FROM pedido_itens WHERE pedido_id = ?')
     .all(pedidoId);
@@ -141,6 +145,8 @@ router.post('/pedido/:token', carregarMesa, express.json(), async (req, res) => 
   } catch (err) {
     db.prepare('UPDATE pedidos SET erro_impressao = ? WHERE id = ?').run(err.message, pedidoId);
     // O pedido fica salvo mesmo se a impressão falhar - pode reimprimir pelo admin.
+    // Com o painel do bar ligado, a equipe já vê o pedido na tela: não precisa assustar o cliente.
+    if (usaTela()) return res.json({ ok: true, pedidoId });
     return res.json({
       ok: true,
       pedidoId,

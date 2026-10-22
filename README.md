@@ -225,6 +225,27 @@ nome dela, no canto do topo da tela.
 O usuário `admin` que já existia virou gerente. Se ele ainda usa a senha
 inicial `admin123`, o Dashboard mostra um aviso para trocar.
 
+## 12. Painel do bar (pedidos na tela)
+
+Em **Configuração → Para onde vão os pedidos novos** dá pra escolher:
+
+- **Só impressora do bar**: como sempre foi.
+- **Só painel na tela**: nada é impresso, os pedidos aparecem no painel.
+- **Impressora e painel**: os dois. Se a impressora falhar, o pedido continua
+  aparecendo no painel (com o aviso "Não foi impresso"), então nada se perde.
+
+Com o painel ligado, aparece o menu **Painel do bar**. Abra num tablet ou no
+computador do bar (o ideal é entrar com um usuário **Funcionário**, que já cai
+direto no painel). Cada pedido vira um cartão grande com a mesa, os itens e há
+quanto tempo está esperando. A borda fica amarela depois de 5 minutos e
+vermelha depois de 10. Quando o garçom levar, toque em **"✓ Entregue"**. Se
+tocar sem querer, use **"Desfazer"** em "Entregues recentemente".
+
+- O painel se atualiza sozinho a cada 4 segundos.
+- Toque em **"Ativar som"** uma vez ao abrir para ouvir um aviso a cada pedido
+  novo (o navegador só libera som depois de um toque na tela).
+- A tela tenta ficar sempre acesa enquanto o painel estiver aberto.
+
 ## Estrutura do projeto (caso queira mexer no código depois)
 
 ```
