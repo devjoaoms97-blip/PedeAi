@@ -37,6 +37,10 @@
     <p class="item-desc">
       Considera só os pedidos feitos pelo QR Code. O valor é estimado pelo preço dos itens no momento do pedido
       (o que foi lançado direto na comanda ou ajustado no caixa não aparece aqui).
+      <% if (r.totais.cancelados > 0) { %>
+        <%= plural(r.totais.cancelados, 'pedido cancelado ficou', 'pedidos cancelados ficaram') %> de fora
+        (<a href="/admin/pedidos">ver em Pedidos</a>).
+      <% } %>
     </p>
 
     <div class="stats">

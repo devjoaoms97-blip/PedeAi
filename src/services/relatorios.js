@@ -2,9 +2,11 @@ const db = require('../db');
 
 // Os relatórios só enxergam pedidos feitos pelo QR Code. O valor é estimado
 // pelo preço do item no momento do pedido (o que é cobrado no caixa pode diferir).
+// Pedidos cancelados ficam de fora (só aparecem na contagem de cancelados).
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const FILTRO = `date(p.criado_em, 'localtime') BETWEEN @de AND @ate`;
+const NO_PERIODO = `date(p.criado_em, 'localtime') BETWEEN @de AND @ate`;
+const FILTRO = `${NO_PERIODO} AND p.status != 'cancelado'`;
 
 function dataIso(d) {
   const p = n => String(n).padStart(2, '0');
@@ -45,6 +47,9 @@ function gerarRelatorio({ de, ate }) {
     FROM pedidos p JOIN pedido_itens pi ON pi.pedido_id = p.id
     WHERE ${FILTRO}`).get(params);
   totais.ticketMedio = totais.pedidos ? totais.valor / totais.pedidos : 0;
+  totais.cancelados = db
+    .prepare(`SELECT COUNT(*) c FROM pedidos p WHERE ${NO_PERIODO} AND p.status = 'cancelado'`)
+    .get(params).c;
 
   const porDiaDb = db.prepare(`
     SELECT date(p.criado_em, 'localtime') AS dia,

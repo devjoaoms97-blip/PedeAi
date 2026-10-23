@@ -13,6 +13,7 @@ const { corValida, LOGO_PADRAO } = require('../services/marca');
 const { fazerBackup, statusBackup } = require('../services/backup');
 const { formatarDataHora } = require('../services/datas');
 const { resolverPeriodo, gerarRelatorio, PERIODOS } = require('../services/relatorios');
+const { registrar, nomeUsuario, descreverMudancas, reais } = require('../services/atividades');
 
 const router = express.Router();
 router.use(express.urlencoded({ extended: true }));
@@ -31,7 +32,7 @@ const PERFIS = { gerente: 'Gerente', funcionario: 'Funcionário' };
 const ROTAS_FUNCIONARIO = [
   /^\/pedidos$/,
   /^\/pedidos\/\d+\/reimprimir$/,
-  /^\/painel(\/dados|\/\d+\/(entregue|reabrir))?$/,
+  /^\/painel(\/dados|\/\d+\/(preparo|entregue|reabrir)|\/chamados\/\d+\/atendido)?$/,
   /^\/minha-senha$/
 ];
 
@@ -58,6 +59,11 @@ function exigirPerfilPermitido(req, res, next) {
   res.status(403).render('admin/sem-permissao');
 }
 
+// Registra no log de atividades em nome de quem está logado
+function log(req, acao, detalhe) {
+  registrar(req.usuario, acao, detalhe);
+}
+
 // ---------- Login ----------
 router.get('/login', (req, res) => {
   res.render('admin/login', { erro: null });
@@ -69,6 +75,7 @@ router.post('/login', (req, res) => {
   if (!user || !bcrypt.compareSync(senha || '', user.senha_hash)) {
     return res.render('admin/login', { erro: 'Usuário ou senha inválidos.' });
   }
+  registrar(user, 'Entrou no sistema');
   req.session.regenerate(() => {
     req.session.usuarioId = user.id;
     req.session.senhaPadrao = senha === 'admin123';
@@ -97,6 +104,7 @@ router.post('/minha-senha', (req, res) => {
 
   db.prepare('UPDATE admin_users SET senha_hash = ? WHERE id = ?').run(bcrypt.hashSync(senha_nova, 10), req.usuario.id);
   req.session.senhaPadrao = false;
+  log(req, 'Trocou a própria senha');
   res.redirect('/admin/minha-senha?salvo=1');
 });
 
@@ -136,6 +144,7 @@ router.post('/usuarios/novo', (req, res) => {
   }
   db.prepare('INSERT INTO admin_users (usuario, nome, perfil, senha_hash) VALUES (?, ?, ?, ?)')
     .run(usuario, nome || null, perfil, bcrypt.hashSync(req.body.senha, 10));
+  log(req, 'Criou usuário', `${usuario} (${PERFIS[perfil]})`);
   voltarUsuarios(res, `Usuário "${usuario}" criado.`);
 });
 
@@ -153,8 +162,15 @@ router.post('/usuarios/:id/editar', (req, res) => {
     return voltarUsuarios(res, 'Você não pode desativar o próprio usuário.', true);
   }
 
+  const depois = { nome: (req.body.nome || '').trim() || null, perfil, ativo };
   db.prepare('UPDATE admin_users SET nome = ?, perfil = ?, ativo = ? WHERE id = ?')
-    .run((req.body.nome || '').trim() || null, perfil, ativo, alvo.id);
+    .run(depois.nome, depois.perfil, depois.ativo, alvo.id);
+  const mudancas = descreverMudancas(alvo, depois, [
+    ['nome', 'nome'],
+    ['perfil', 'perfil', v => PERFIS[v]],
+    ['ativo', 'situação', v => (Number(v) ? 'ativo' : 'desativado')]
+  ]);
+  if (mudancas) log(req, 'Alterou usuário', `${alvo.usuario}: ${mudancas}`);
   voltarUsuarios(res, `Usuário "${alvo.usuario}" atualizado.`);
 });
 
@@ -164,6 +180,7 @@ router.post('/usuarios/:id/senha', (req, res) => {
   const erroSenha = validarSenha(req.body.senha, req.body.senha_confirma);
   if (erroSenha) return voltarUsuarios(res, erroSenha, true);
   db.prepare('UPDATE admin_users SET senha_hash = ? WHERE id = ?').run(bcrypt.hashSync(req.body.senha, 10), alvo.id);
+  log(req, 'Trocou a senha de usuário', alvo.usuario);
   voltarUsuarios(res, `Senha de "${alvo.usuario}" alterada.`);
 });
 
@@ -175,6 +192,7 @@ router.post('/usuarios/:id/excluir', (req, res) => {
     return voltarUsuarios(res, 'Precisa existir pelo menos um gerente ativo.', true);
   }
   db.prepare('DELETE FROM admin_users WHERE id = ?').run(alvo.id);
+  log(req, 'Excluiu usuário', alvo.usuario);
   voltarUsuarios(res, `Usuário "${alvo.usuario}" excluído.`);
 });
 
@@ -183,10 +201,10 @@ router.get('/', (req, res) => {
   const totalMesas = db.prepare('SELECT COUNT(*) c FROM mesas WHERE ativa = 1').get().c;
   const totalItens = db.prepare('SELECT COUNT(*) c FROM itens').get().c;
   const pedidosHoje = db
-    .prepare("SELECT COUNT(*) c FROM pedidos WHERE date(criado_em, 'localtime') = date('now', 'localtime')")
+    .prepare("SELECT COUNT(*) c FROM pedidos WHERE status != 'cancelado' AND date(criado_em, 'localtime') = date('now', 'localtime')")
     .get().c;
   const pedidosComErro = db
-    .prepare('SELECT COUNT(*) c FROM pedidos WHERE erro_impressao IS NOT NULL AND impresso = 0')
+    .prepare("SELECT COUNT(*) c FROM pedidos WHERE erro_impressao IS NOT NULL AND impresso = 0 AND status != 'cancelado'")
     .get().c;
   res.render('admin/dashboard', {
     totalMesas,
@@ -243,23 +261,35 @@ router.post('/mesas/nova', (req, res) => {
   const nome = (req.body.nome || '').trim();
   if (!nome) return res.redirect('/admin/mesas');
   db.prepare('INSERT INTO mesas (nome, token) VALUES (?, ?)').run(nome, nanoid(24));
+  log(req, 'Criou mesa', nome);
   res.redirect('/admin/mesas');
 });
 
 router.post('/mesas/:id/rotacionar', (req, res) => {
-  db.prepare('UPDATE mesas SET token = ? WHERE id = ?').run(nanoid(24), req.params.id);
+  const mesa = db.prepare('SELECT * FROM mesas WHERE id = ?').get(req.params.id);
+  if (mesa) {
+    db.prepare('UPDATE mesas SET token = ? WHERE id = ?').run(nanoid(24), mesa.id);
+    log(req, 'Gerou novo QR da mesa', `${mesa.nome} (o QR antigo parou de funcionar)`);
+  }
   res.redirect('/admin/mesas');
 });
 
 router.post('/mesas/:id/toggle', (req, res) => {
   const mesa = db.prepare('SELECT * FROM mesas WHERE id = ?').get(req.params.id);
-  if (mesa) db.prepare('UPDATE mesas SET ativa = ? WHERE id = ?').run(mesa.ativa ? 0 : 1, mesa.id);
+  if (mesa) {
+    db.prepare('UPDATE mesas SET ativa = ? WHERE id = ?').run(mesa.ativa ? 0 : 1, mesa.id);
+    log(req, mesa.ativa ? 'Desativou mesa' : 'Ativou mesa', mesa.nome);
+  }
   res.redirect('/admin/mesas');
 });
 
 router.post('/mesas/:id/renomear', (req, res) => {
   const nome = (req.body.nome || '').trim();
-  if (nome) db.prepare('UPDATE mesas SET nome = ? WHERE id = ?').run(nome, req.params.id);
+  const mesa = db.prepare('SELECT * FROM mesas WHERE id = ?').get(req.params.id);
+  if (mesa && nome && nome !== mesa.nome) {
+    db.prepare('UPDATE mesas SET nome = ? WHERE id = ?').run(nome, mesa.id);
+    log(req, 'Renomeou mesa', `"${mesa.nome}" → "${nome}"`);
+  }
   res.redirect('/admin/mesas');
 });
 
@@ -275,6 +305,7 @@ router.post('/cardapio/categorias/nova', upload.single('imagem'), async (req, re
   if (!nome) return res.redirect('/admin/cardapio');
   const imagem = req.file ? await salvarImagemQuadrada(req.file.buffer) : null;
   db.prepare('INSERT INTO categorias (nome, imagem) VALUES (?, ?)').run(nome, imagem);
+  log(req, 'Criou categoria', nome);
   res.redirect('/admin/cardapio');
 });
 
@@ -290,6 +321,9 @@ router.post('/cardapio/categorias/:id/editar', upload.single('imagem'), async (r
   }
 
   db.prepare('UPDATE categorias SET nome = ?, imagem = ? WHERE id = ?').run(nome, imagem, categoria.id);
+  const mudancas = [descreverMudancas(categoria, { nome }, [['nome', 'nome']]), req.file ? 'trocou o ícone' : '']
+    .filter(Boolean).join('; ');
+  if (mudancas) log(req, 'Alterou categoria', `${categoria.nome}: ${mudancas}`);
   res.redirect('/admin/cardapio');
 });
 
@@ -298,6 +332,7 @@ router.post('/cardapio/categorias/:id/remover-imagem', (req, res) => {
   if (categoria) {
     excluirImagem(categoria.imagem);
     db.prepare('UPDATE categorias SET imagem = NULL WHERE id = ?').run(categoria.id);
+    log(req, 'Removeu ícone da categoria', categoria.nome);
   }
   res.redirect('/admin/cardapio');
 });
@@ -306,9 +341,11 @@ router.post('/cardapio/itens/novo', upload.single('imagem'), async (req, res) =>
   const { categoria_id, nome, descricao, preco } = req.body;
   if (categoria_id && nome && preco) {
     const imagem = req.file ? await salvarImagemQuadrada(req.file.buffer) : null;
+    const precoNum = parseFloat(preco.replace(',', '.'));
     db.prepare(
       'INSERT INTO itens (categoria_id, nome, descricao, preco, imagem) VALUES (?, ?, ?, ?, ?)'
-    ).run(categoria_id, nome.trim(), (descricao || '').trim(), parseFloat(preco.replace(',', '.')), imagem);
+    ).run(categoria_id, nome.trim(), (descricao || '').trim(), precoNum, imagem);
+    log(req, 'Criou item', `${nome.trim()} (${reais(precoNum)})`);
   }
   res.redirect('/admin/cardapio');
 });
@@ -324,13 +361,23 @@ router.post('/cardapio/itens/:id/editar', upload.single('imagem'), async (req, r
     imagem = await salvarImagemQuadrada(req.file.buffer);
   }
 
+  const depois = {
+    nome: nome.trim(),
+    descricao: (descricao || '').trim(),
+    preco: parseFloat(String(preco).replace(',', '.'))
+  };
   db.prepare('UPDATE itens SET nome = ?, descricao = ?, preco = ?, imagem = ? WHERE id = ?').run(
-    nome.trim(),
-    (descricao || '').trim(),
-    parseFloat(String(preco).replace(',', '.')),
+    depois.nome,
+    depois.descricao,
+    depois.preco,
     imagem,
     req.params.id
   );
+  const mudancas = [
+    descreverMudancas(item, depois, [['nome', 'nome'], ['preco', 'preço', reais], ['descricao', 'descrição']]),
+    req.file ? 'trocou o ícone' : ''
+  ].filter(Boolean).join('; ');
+  if (mudancas) log(req, 'Alterou item', `${item.nome}: ${mudancas}`);
   res.redirect('/admin/cardapio');
 });
 
@@ -339,17 +386,26 @@ router.post('/cardapio/itens/:id/remover-imagem', (req, res) => {
   if (item) {
     excluirImagem(item.imagem);
     db.prepare('UPDATE itens SET imagem = NULL WHERE id = ?').run(item.id);
+    log(req, 'Removeu ícone do item', item.nome);
   }
   res.redirect('/admin/cardapio');
 });
 
 router.post('/cardapio/itens/:id/toggle', (req, res) => {
   const item = db.prepare('SELECT * FROM itens WHERE id = ?').get(req.params.id);
-  if (item) db.prepare('UPDATE itens SET disponivel = ? WHERE id = ?').run(item.disponivel ? 0 : 1, item.id);
+  if (item) {
+    db.prepare('UPDATE itens SET disponivel = ? WHERE id = ?').run(item.disponivel ? 0 : 1, item.id);
+    log(req, item.disponivel ? 'Marcou item como indisponível' : 'Marcou item como disponível', item.nome);
+  }
   res.redirect('/admin/cardapio');
 });
 
 // ---------- Página de opções de um item específico ----------
+function nomeDoItem(itemId) {
+  const item = db.prepare('SELECT nome FROM itens WHERE id = ?').get(itemId);
+  return item ? item.nome : `item #${itemId}`;
+}
+
 router.get('/cardapio/itens/:id/opcoes', (req, res) => {
   const item = db.prepare('SELECT * FROM itens WHERE id = ?').get(req.params.id);
   if (!item) return res.redirect('/admin/cardapio');
@@ -366,7 +422,8 @@ router.get('/cardapio/itens/:id/opcoes', (req, res) => {
 
 router.post('/cardapio/itens/:id/opcoes/novo-grupo', (req, res) => {
   const { nome, tipo, obrigatorio, qtd_min, qtd_max } = req.body;
-  if (!nome) return res.redirect(`/admin/cardapio/itens/${req.params.id}/opcoes`);
+  const item = db.prepare('SELECT * FROM itens WHERE id = ?').get(req.params.id);
+  if (!item || !nome) return res.redirect(`/admin/cardapio/itens/${req.params.id}/opcoes`);
   db.prepare(
     `INSERT INTO opcao_grupos (item_id, nome, tipo, obrigatorio, qtd_min, qtd_max)
      VALUES (?, ?, ?, ?, ?, ?)`
@@ -378,6 +435,7 @@ router.post('/cardapio/itens/:id/opcoes/novo-grupo', (req, res) => {
     parseInt(qtd_min, 10) || 0,
     parseInt(qtd_max, 10) || 10
   );
+  log(req, 'Criou opção no item', `${item.nome}: ${nome.trim()}`);
   res.redirect(`/admin/cardapio/itens/${req.params.id}/opcoes`);
 });
 
@@ -386,6 +444,7 @@ router.post('/cardapio/grupos/:grupoId/excluir', (req, res) => {
   if (grupo) {
     db.prepare('DELETE FROM opcao_valores WHERE grupo_id = ?').run(grupo.id);
     db.prepare('DELETE FROM opcao_grupos WHERE id = ?').run(grupo.id);
+    log(req, 'Excluiu opção do item', `${nomeDoItem(grupo.item_id)}: ${grupo.nome}`);
     return res.redirect(`/admin/cardapio/itens/${grupo.item_id}/opcoes`);
   }
   res.redirect('/admin/cardapio');
@@ -394,8 +453,10 @@ router.post('/cardapio/grupos/:grupoId/excluir', (req, res) => {
 router.post('/cardapio/grupos/:grupoId/novo-valor', (req, res) => {
   const nome = (req.body.nome || '').trim();
   const grupo = db.prepare('SELECT * FROM opcao_grupos WHERE id = ?').get(req.params.grupoId);
-  if (grupo && nome) {
+  if (!grupo) return res.redirect('/admin/cardapio');
+  if (nome) {
     db.prepare('INSERT INTO opcao_valores (grupo_id, nome) VALUES (?, ?)').run(grupo.id, nome);
+    log(req, 'Adicionou valor de opção', `${nomeDoItem(grupo.item_id)} › ${grupo.nome}: ${nome}`);
   }
   res.redirect(`/admin/cardapio/itens/${grupo.item_id}/opcoes`);
 });
@@ -405,6 +466,7 @@ router.post('/cardapio/valores/:valorId/excluir', (req, res) => {
   if (valor) {
     const grupo = db.prepare('SELECT * FROM opcao_grupos WHERE id = ?').get(valor.grupo_id);
     db.prepare('DELETE FROM opcao_valores WHERE id = ?').run(valor.id);
+    log(req, 'Removeu valor de opção', `${nomeDoItem(grupo.item_id)} › ${grupo.nome}: ${valor.nome}`);
     return res.redirect(`/admin/cardapio/itens/${grupo.item_id}/opcoes`);
   }
   res.redirect('/admin/cardapio');
@@ -430,6 +492,7 @@ router.post('/cardapio/itens/:id/opcoes/aplicar-padrao', (req, res) => {
       .all(template.id);
     const insertValor = db.prepare('INSERT INTO opcao_valores (grupo_id, nome, ordem) VALUES (?, ?, ?)');
     valoresTemplate.forEach((v, i) => insertValor.run(grupoId, v.nome, i));
+    log(req, 'Aplicou opção padrão no item', `${item.nome}: ${template.nome}`);
   }
   res.redirect(`/admin/cardapio/itens/${req.params.id}/opcoes`);
 });
@@ -459,10 +522,13 @@ router.post('/opcoes-padrao/novo', (req, res) => {
     parseInt(qtd_min, 10) || 0,
     parseInt(qtd_max, 10) || 10
   );
+  log(req, 'Criou opção padrão', nome.trim());
   res.redirect('/admin/opcoes-padrao');
 });
 
 router.post('/opcoes-padrao/:id/excluir', (req, res) => {
+  const template = db.prepare('SELECT * FROM opcao_templates WHERE id = ?').get(req.params.id);
+  if (template) log(req, 'Excluiu opção padrão', template.nome);
   db.prepare('DELETE FROM opcao_template_valores WHERE template_id = ?').run(req.params.id);
   db.prepare('DELETE FROM opcao_templates WHERE id = ?').run(req.params.id);
   res.redirect('/admin/opcoes-padrao');
@@ -473,11 +539,19 @@ router.post('/opcoes-padrao/:id/novo-valor', (req, res) => {
   const template = db.prepare('SELECT * FROM opcao_templates WHERE id = ?').get(req.params.id);
   if (template && nome) {
     db.prepare('INSERT INTO opcao_template_valores (template_id, nome) VALUES (?, ?)').run(template.id, nome);
+    log(req, 'Adicionou valor na opção padrão', `${template.nome}: ${nome}`);
   }
   res.redirect('/admin/opcoes-padrao');
 });
 
 router.post('/opcoes-padrao/valores/:valorId/excluir', (req, res) => {
+  const valor = db
+    .prepare(
+      `SELECT v.nome, t.nome AS template_nome FROM opcao_template_valores v
+       JOIN opcao_templates t ON t.id = v.template_id WHERE v.id = ?`
+    )
+    .get(req.params.valorId);
+  if (valor) log(req, 'Removeu valor da opção padrão', `${valor.template_nome}: ${valor.nome}`);
   db.prepare('DELETE FROM opcao_template_valores WHERE id = ?').run(req.params.valorId);
   res.redirect('/admin/opcoes-padrao');
 });
@@ -494,9 +568,30 @@ router.get('/pedidos', (req, res) => {
   const pedidosComItens = pedidos.map(p => ({
     ...p,
     criado_em_local: formatarDataHora(p.criado_em),
+    cancelado_em_local: formatarDataHora(p.cancelado_em),
     itens: db.prepare('SELECT * FROM pedido_itens WHERE pedido_id = ?').all(p.id)
   }));
-  res.render('admin/pedidos', { pedidos: pedidosComItens });
+  res.render('admin/pedidos', { pedidos: pedidosComItens, msg: req.query.msg || null, erro: req.query.erro || null });
+});
+
+// Só gerente (não está em ROTAS_FUNCIONARIO). O pedido cancelado sai do painel
+// do bar e dos relatórios, mas continua no histórico com quem cancelou e por quê.
+router.post('/pedidos/:id/cancelar', (req, res) => {
+  const pedido = db
+    .prepare('SELECT p.*, m.nome AS mesa_nome FROM pedidos p JOIN mesas m ON m.id = p.mesa_id WHERE p.id = ?')
+    .get(req.params.id);
+  const motivo = (req.body.motivo || '').trim().slice(0, 200);
+  const voltar = (chave, texto) =>
+    res.redirect(`/admin/pedidos?${chave}=${encodeURIComponent(texto)}#pedido-${parseInt(req.params.id, 10) || ''}`);
+  if (!pedido) return voltar('erro', 'Pedido não encontrado.');
+  if (pedido.status === 'cancelado') return voltar('erro', `O pedido #${pedido.id} já estava cancelado.`);
+  if (!motivo) return voltar('erro', 'Informe o motivo do cancelamento.');
+
+  db.prepare(
+    "UPDATE pedidos SET status = 'cancelado', cancelado_em = datetime('now'), cancelado_por = ?, motivo_cancelamento = ? WHERE id = ?"
+  ).run(nomeUsuario(req.usuario), motivo, pedido.id);
+  log(req, 'Cancelou pedido', `#${pedido.id} (${pedido.mesa_nome}): ${motivo}`);
+  voltar('msg', `Pedido #${pedido.id} cancelado.`);
 });
 
 // ---------- Relatórios ----------
@@ -517,33 +612,55 @@ router.get('/painel/dados', (req, res) => {
     db.prepare(
       `SELECT p.id, p.status, p.criado_em, p.entregue_em, p.impresso, p.erro_impressao, m.nome AS mesa_nome
        FROM pedidos p JOIN mesas m ON m.id = p.mesa_id
-       WHERE p.status = ? AND p.criado_em >= datetime('now', '-12 hours')
+       WHERE p.status IN (${status.map(() => '?').join(',')}) AND p.criado_em >= datetime('now', '-12 hours')
        ORDER BY ${ordem} LIMIT ${limite}`
-    ).all(status);
+    ).all(...status);
   const itensStmt = db.prepare(
     'SELECT quantidade, nome_item, opcoes_texto, observacao FROM pedido_itens WHERE pedido_id = ?'
   );
   const completar = p => ({ ...p, itens: itensStmt.all(p.id) });
 
+  const chamados = db.prepare(
+    `SELECT c.id, c.criado_em, m.nome AS mesa_nome FROM chamados c JOIN mesas m ON m.id = c.mesa_id
+     WHERE c.atendido_em IS NULL AND c.criado_em >= datetime('now', '-12 hours')
+     ORDER BY c.id ASC`
+  ).all();
+
   res.json({
     agora: new Date().toISOString(),
-    novos: buscar('novo', 'p.id ASC', 100).map(completar),
-    entregues: buscar('entregue', 'p.entregue_em DESC', 8).map(completar)
+    chamados,
+    novos: buscar(['novo', 'preparo'], 'p.id ASC', 100).map(completar),
+    entregues: buscar(['entregue'], 'p.entregue_em DESC', 8).map(completar)
   });
 });
 
+// As mudanças de status só valem a partir do status certo, pra um toque atrasado
+// no painel não "ressuscitar" um pedido que o gerente acabou de cancelar.
+router.post('/painel/:id/preparo', (req, res) => {
+  db.prepare("UPDATE pedidos SET status = 'preparo' WHERE id = ? AND status = 'novo'").run(req.params.id);
+  res.json({ ok: true });
+});
+
 router.post('/painel/:id/entregue', (req, res) => {
-  db.prepare("UPDATE pedidos SET status = 'entregue', entregue_em = datetime('now') WHERE id = ?").run(req.params.id);
+  db.prepare("UPDATE pedidos SET status = 'entregue', entregue_em = datetime('now') WHERE id = ? AND status IN ('novo', 'preparo')")
+    .run(req.params.id);
   res.json({ ok: true });
 });
 
 router.post('/painel/:id/reabrir', (req, res) => {
-  db.prepare("UPDATE pedidos SET status = 'novo', entregue_em = NULL WHERE id = ?").run(req.params.id);
+  db.prepare("UPDATE pedidos SET status = 'novo', entregue_em = NULL WHERE id = ? AND status = 'entregue'").run(req.params.id);
+  res.json({ ok: true });
+});
+
+router.post('/painel/chamados/:id/atendido', (req, res) => {
+  db.prepare("UPDATE chamados SET atendido_em = datetime('now'), atendido_por = ? WHERE id = ? AND atendido_em IS NULL")
+    .run(nomeUsuario(req.usuario), req.params.id);
   res.json({ ok: true });
 });
 
 router.post('/pedidos/:id/reimprimir', async (req, res) => {
   const pedido = db.prepare('SELECT * FROM pedidos WHERE id = ?').get(req.params.id);
+  if (!pedido || pedido.status === 'cancelado') return res.redirect('/admin/pedidos');
   const mesa = db.prepare('SELECT * FROM mesas WHERE id = ?').get(pedido.mesa_id);
   const itens = db.prepare('SELECT * FROM pedido_itens WHERE pedido_id = ?').all(pedido.id);
   try {
@@ -554,10 +671,40 @@ router.post('/pedidos/:id/reimprimir', async (req, res) => {
       criadoEm: pedido.criado_em
     });
     db.prepare('UPDATE pedidos SET impresso = 1, erro_impressao = NULL WHERE id = ?').run(pedido.id);
+    log(req, 'Reimprimiu pedido', `#${pedido.id} (${mesa.nome})`);
   } catch (err) {
     db.prepare('UPDATE pedidos SET erro_impressao = ? WHERE id = ?').run(err.message, pedido.id);
+    log(req, 'Tentou reimprimir pedido', `#${pedido.id} (${mesa.nome}) — falhou: ${err.message}`);
   }
   res.redirect('/admin/pedidos');
+});
+
+// ---------- Log de atividades (só gerente) ----------
+const POR_PAGINA_ATIVIDADES = 100;
+
+router.get('/atividades', (req, res) => {
+  const usuarioId = parseInt(req.query.usuario, 10) || null;
+  const antesDe = parseInt(req.query.antes, 10) || null;
+  const atividades = db
+    .prepare(
+      `SELECT * FROM atividades
+       WHERE (@usuarioId IS NULL OR usuario_id = @usuarioId) AND (@antesDe IS NULL OR id < @antesDe)
+       ORDER BY id DESC LIMIT ${POR_PAGINA_ATIVIDADES + 1}`
+    )
+    .all({ usuarioId, antesDe })
+    .map(a => ({ ...a, criado_em_local: formatarDataHora(a.criado_em) }));
+  const temMais = atividades.length > POR_PAGINA_ATIVIDADES;
+  if (temMais) atividades.pop();
+
+  // Filtro por pessoa: inclui quem já foi excluído mas ainda aparece no log
+  const pessoas = db
+    .prepare(
+      `SELECT usuario_id AS id, MAX(id) AS ultima, usuario_nome AS nome FROM atividades
+       WHERE usuario_id IS NOT NULL GROUP BY usuario_id ORDER BY nome`
+    )
+    .all();
+
+  res.render('admin/atividades', { atividades, pessoas, usuarioId, temMais });
 });
 
 // ---------- Configuração ----------
@@ -584,32 +731,50 @@ router.post('/config/backup', (req, res) => {
       return res.redirect('/admin/config?backup=' + encodeURIComponent(`Não foi possível usar a pasta: ${err.message}`));
     }
   }
+  const antes = getAllConfig();
   setConfig('backup_pasta', pasta);
   const manter = Math.min(365, Math.max(1, parseInt(req.body.backup_manter, 10) || 14));
   setConfig('backup_manter', manter);
+  const mudancas = descreverMudancas({ backup_manter: '14', ...antes }, { backup_pasta: pasta, backup_manter: manter }, [
+    ['backup_pasta', 'pasta', v => (v ? `"${v}"` : 'padrão')],
+    ['backup_manter', 'cópias mantidas', v => v]
+  ]);
+  if (mudancas) log(req, 'Alterou o backup automático', mudancas);
   res.redirect('/admin/config?salvo=1');
 });
 
 router.post('/config/backup/agora', async (req, res) => {
   try {
     const destino = await fazerBackup();
+    log(req, 'Fez backup manual', destino);
     res.redirect('/admin/config?backup=' + encodeURIComponent(`Backup feito: ${destino}`));
   } catch (err) {
     res.redirect('/admin/config?backup=' + encodeURIComponent(`Falha no backup: ${err.message}`));
   }
 });
 
+const NOMES_MODOS = { impressora: 'só impressora', tela: 'só painel', ambos: 'impressora e painel' };
+
 router.post('/config', (req, res) => {
   const { printer_ip, printer_port, base_url, modo_pedidos } = req.body;
+  const antes = getAllConfig();
   if (MODOS_PEDIDOS.includes(modo_pedidos)) setConfig('modo_pedidos', modo_pedidos);
   setConfig('printer_ip', (printer_ip || '').trim());
   setConfig('printer_port', (printer_port || '9100').trim());
   setConfig('base_url', (base_url || '').trim().replace(/\/$/, ''));
+  const mudancas = descreverMudancas(antes, getAllConfig(), [
+    ['modo_pedidos', 'pedidos vão para', v => NOMES_MODOS[v] || v],
+    ['printer_ip', 'IP da impressora'],
+    ['printer_port', 'porta da impressora'],
+    ['base_url', 'endereço base']
+  ]);
+  if (mudancas) log(req, 'Alterou a configuração', mudancas);
   res.redirect('/admin/config?salvo=1');
 });
 
 router.post('/config/marca', upload.single('logo'), async (req, res) => {
   const { nome_restaurante, cor_primaria, cor_destaque, restaurar_logo } = req.body;
+  const antes = getAllConfig();
   setConfig('nome_restaurante', (nome_restaurante || '').trim() || 'Restaurante');
   if (corValida(cor_primaria)) setConfig('cor_primaria', cor_primaria);
   if (corValida(cor_destaque)) setConfig('cor_destaque', cor_destaque);
@@ -623,6 +788,15 @@ router.post('/config/marca', upload.single('logo'), async (req, res) => {
     setConfig('logo_url', LOGO_PADRAO);
   }
 
+  const mudancas = [
+    descreverMudancas(antes, getAllConfig(), [
+      ['nome_restaurante', 'nome'],
+      ['cor_primaria', 'cor principal', v => v],
+      ['cor_destaque', 'cor de destaque', v => v]
+    ]),
+    req.file ? 'enviou logo nova' : restaurar_logo === '1' ? 'voltou para a logo original' : ''
+  ].filter(Boolean).join('; ');
+  if (mudancas) log(req, 'Alterou a identidade visual', mudancas);
   res.redirect('/admin/config?salvo=1');
 });
 

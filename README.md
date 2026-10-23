@@ -173,6 +173,18 @@ Em **Pedidos**, você vê o histórico de tudo que foi pedido, e se algum pedido
 teve problema pra imprimir (impressora desligada, sem papel, etc.) aparece
 destacado com opção de **reimprimir manualmente**.
 
+### Cancelar pedido
+
+O gerente pode cancelar um pedido em **Pedidos → Cancelar pedido**. É obrigatório
+escrever o motivo (ex: "cliente desistiu", "pedido duplicado"). O pedido
+cancelado:
+
+- sai do painel do bar e dos relatórios (o relatório avisa quantos ficaram de fora);
+- continua no histórico, riscado, mostrando **quem cancelou, quando e por quê**;
+- aparece como "Cancelado" para o cliente, se ele estiver acompanhando pelo celular.
+
+Funcionários não veem o botão de cancelar.
+
 ## 9. Identidade visual (nome, logo e cores)
 
 Em **Configuração → Identidade visual** dá pra trocar o nome do restaurante,
@@ -224,8 +236,9 @@ Em **Usuários** (só para gerentes) dá pra criar logins para a equipe, cada um
 com sua senha e um perfil:
 
 - **Gerente**: acesso total ao painel.
-- **Funcionário**: só vê a tela de **Pedidos** (e pode reimprimir). Ideal para
-  o tablet ou computador do bar.
+- **Funcionário**: só vê o **Painel do bar** e a tela de **Pedidos** (e pode
+  reimprimir). Não cancela pedidos nem vê o log de atividades. Ideal para o
+  tablet ou computador do bar.
 
 Também dá pra desativar um usuário (ele perde o acesso na hora, sem precisar
 apagar), trocar a senha de alguém ou excluir. O sistema não deixa ficar sem
@@ -251,6 +264,27 @@ quanto tempo está esperando. A borda fica amarela depois de 5 minutos e
 vermelha depois de 10. Quando o garçom levar, toque em **"✓ Entregue"**. Se
 tocar sem querer, use **"Desfazer"** em "Entregues recentemente".
 
+O botão **"Começar preparo"** é opcional: serve só para o cliente ver no celular
+que o bar já está fazendo o pedido. Dá para ir direto para "✓ Entregue".
+
+### Chamar garçom
+
+Com o painel ligado, o cardápio do cliente ganha o botão **"🙋 Chamar garçom"**.
+O chamado aparece no topo do painel, em amarelo, com a mesa e há quanto tempo
+chamou (toca o mesmo aviso de pedido novo). Quando alguém for até a mesa, toque
+em **"Atendido"**. Se o cliente tocar várias vezes, continua sendo um chamado
+só. Não existe "pedir a conta": a conta continua sendo fechada só no caixa.
+
+### Cliente acompanha o pedido
+
+Com o painel ligado, depois de fazer o pedido o cliente vê no celular em que pé
+ele está: **Recebido → Em preparo → Entregue** (ou "Cancelado"). A tela se
+atualiza sozinha. Se ele fechar e abrir o cardápio de novo, os pedidos das
+últimas 12 horas feitos naquele celular continuam aparecendo no topo.
+
+No modo **"Só impressora do bar"** não há painel para mudar o status, então o
+acompanhamento e o "Chamar garçom" ficam escondidos.
+
 - O painel se atualiza sozinho a cada 4 segundos.
 - Toque em **"Ativar som"** uma vez ao abrir para ouvir um aviso a cada pedido
   novo (o navegador só libera som depois de um toque na tela).
@@ -273,7 +307,23 @@ gráfico tem um "Ver tabela" com os números.
 
 Importante: os relatórios só enxergam os pedidos feitos pelo QR Code. O valor
 é uma estimativa pelo preço dos itens na hora do pedido. O que foi lançado
-direto na comanda ou ajustado no caixa não aparece.
+direto na comanda ou ajustado no caixa não aparece. Pedidos cancelados ficam
+de fora.
+
+## 14. Log de atividades
+
+Em **Atividades** (só para gerentes) fica registrado quem fez o quê no painel,
+com data e hora:
+
+- cardápio: item criado, preço/nome/descrição alterados (mostra o antes → depois),
+  item marcado como indisponível, ícones, opções;
+- mesas: criada, renomeada, desativada, QR gerado de novo;
+- usuários: criado, alterado, senha trocada, excluído, e cada entrada no sistema;
+- pedidos: cancelados (com o motivo) e reimpressos;
+- configuração, identidade visual e backup.
+
+Dá para filtrar por pessoa. Marcar pedido como entregue ou em preparo não entra
+no log, para não encher a lista.
 
 ## Estrutura do projeto (caso queira mexer no código depois)
 
@@ -287,6 +337,7 @@ src/
     marca.js           -> nome, logo e cores do restaurante (usados em todas as telas)
     backup.js          -> backup diário do banco e das imagens
     relatorios.js      -> consultas dos relatórios de vendas
+    atividades.js      -> log de atividades (quem alterou o quê)
     datas.js           -> conversão das datas do banco (UTC) para o horário local
   routes/
     customer.js        -> páginas que o cliente vê (cardápio + envio de pedido)
@@ -299,13 +350,5 @@ data/
 
 ## Próximos passos possíveis (quando quiser)
 
-- **Acompanhar o pedido**: o cliente vê no celular se o pedido foi recebido,
-  está em preparo ou a caminho (aproveita o status do painel do bar).
-- **Botão "Chamar garçom"**: o chamado aparece no painel do bar. Não tem
-  "pedir a conta" — a conta continua sendo fechada só no caixa.
-- **Cancelar pedido com motivo**: o gerente cancela, o pedido sai dos
-  relatórios e fica registrado quem cancelou e por quê.
-- **Log de atividades**: registro de quem alterou preço, removeu item,
-  reimprimiu pedido etc.
 - Adicionar categoria de "Porções" e a segunda impressora (cozinha), seguindo o
   mesmo padrão já construído.

@@ -38,8 +38,51 @@ router.get('/pedido/:token', carregarMesa, (req, res) => {
 
   res.render('customer/menu', {
     mesa: req.mesa,
-    categorias: categoriasComItens
+    categorias: categoriasComItens,
+    // Acompanhar o pedido e chamar o garçom dependem de alguém olhando o painel do bar
+    painelAtivo: usaTela()
   });
+});
+
+// GET /pedido/:token/acompanhar?ids=1,2 -> status dos pedidos que este celular fez
+// (os ids ficam guardados no próprio celular). Só devolve pedidos desta mesa e das
+// últimas 12h, então trocar ids na URL não mostra pedido de outra mesa.
+router.get('/pedido/:token/acompanhar', carregarMesa, (req, res) => {
+  const ids = String(req.query.ids || '')
+    .split(',')
+    .map(id => parseInt(id, 10))
+    .filter(Boolean)
+    .slice(0, 20);
+
+  const pedidos = ids.length === 0 ? [] : db
+    .prepare(
+      `SELECT id, status, criado_em FROM pedidos
+       WHERE mesa_id = ? AND id IN (${ids.map(() => '?').join(',')}) AND criado_em >= datetime('now', '-12 hours')
+       ORDER BY id DESC`
+    )
+    .all(req.mesa.id, ...ids);
+  const itensStmt = db.prepare('SELECT quantidade, nome_item FROM pedido_itens WHERE pedido_id = ?');
+
+  res.json({
+    pedidos: pedidos.map(p => ({ ...p, itens: itensStmt.all(p.id) })),
+    chamadoAberto: !!chamadoAberto(req.mesa.id)
+  });
+});
+
+function chamadoAberto(mesaId) {
+  return db
+    .prepare("SELECT * FROM chamados WHERE mesa_id = ? AND atendido_em IS NULL AND criado_em >= datetime('now', '-12 hours')")
+    .get(mesaId);
+}
+
+// POST /pedido/:token/chamar -> "Chamar garçom". Se a mesa já tem um chamado
+// esperando, não cria outro (tocar várias vezes não enche o painel).
+router.post('/pedido/:token/chamar', carregarMesa, (req, res) => {
+  if (!usaTela()) return res.status(400).json({ erro: 'Chamar o garçom pelo cardápio não está disponível.' });
+  if (!chamadoAberto(req.mesa.id)) {
+    db.prepare('INSERT INTO chamados (mesa_id) VALUES (?)').run(req.mesa.id);
+  }
+  res.json({ ok: true });
 });
 
 // POST /pedido/:token -> recebe o carrinho e cria o pedido

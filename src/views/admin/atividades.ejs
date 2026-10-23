@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Atividades</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <%- include('../partials/marca-estilo') %>
+</head>
+<%
+  const linkMais = () => {
+    const params = new URLSearchParams();
+    if (usuarioId) params.set('usuario', usuarioId);
+    params.set('antes', atividades[atividades.length - 1].id);
+    return '/admin/atividades?' + params.toString();
+  };
+%>
+<body>
+  <%- include('../partials/admin-topbar') %>
+  <div class="admin-container">
+    <h2>Atividades</h2>
+    <p class="item-desc">
+      Quem mudou o quê no painel: preços e itens do cardápio, mesas, usuários, configuração,
+      pedidos cancelados e reimpressos. Os mais recentes aparecem primeiro.
+    </p>
+
+    <form class="form-inline" method="GET" action="/admin/atividades" style="margin-bottom:12px;">
+      <div style="max-width:280px;">
+        <label for="filtro-usuario">Pessoa</label>
+        <select id="filtro-usuario" name="usuario" onchange="this.form.submit()">
+          <option value="">Todas</option>
+          <% pessoas.forEach(p => { %>
+            <option value="<%= p.id %>" <%= usuarioId === p.id ? 'selected' : '' %>><%= p.nome %></option>
+          <% }) %>
+        </select>
+      </div>
+      <noscript><button class="btn-secundario" type="submit" style="margin-bottom:10px;">Filtrar</button></noscript>
+    </form>
+
+    <% if (atividades.length === 0) { %>
+      <div class="card" style="text-align:center; padding:32px;">Nenhuma atividade registrada ainda.</div>
+    <% } else { %>
+      <div class="card" style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr><th>Quando</th><th>Quem</th><th>O que fez</th></tr>
+          </thead>
+          <tbody>
+            <% atividades.forEach(a => { %>
+              <tr>
+                <td style="white-space:nowrap;"><%= a.criado_em_local %></td>
+                <td style="white-space:nowrap;"><%= a.usuario_nome %></td>
+                <td>
+                  <strong><%= a.acao %></strong>
+                  <% if (a.detalhe) { %><br><span class="item-desc"><%= a.detalhe %></span><% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <% if (temMais) { %>
+        <a class="btn-secundario" href="<%= linkMais() %>" style="display:inline-block; text-decoration:none;">Ver mais antigas</a>
+      <% } %>
+    <% } %>
+  </div>
+</body>
+</html>

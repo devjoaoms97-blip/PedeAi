@@ -113,6 +113,12 @@ th { color: var(--texto-fraco); font-size: 12px; font-weight: 600; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
 .badge-ok { background: var(--ok-fundo); color: var(--ok); }
 .badge-erro { background: var(--perigo-fundo); color: var(--perigo); }
+.badge-aviso { background: var(--aviso-fundo); color: var(--aviso-texto); }
+
+/* Cancelar pedido (tela de Pedidos, só gerente) */
+.cancelar-pedido { margin-top: 8px; }
+.cancelar-pedido summary { cursor: pointer; font-size: 13px; color: var(--perigo); width: fit-content; }
+.cancelar-pedido form { margin-top: 8px; max-width: 420px; }
 
 /* Avisos (dashboard, mesas...) */
 .alerta {

@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS opcao_template_valores (
 CREATE TABLE IF NOT EXISTS pedidos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   mesa_id INTEGER NOT NULL REFERENCES mesas(id),
-  status TEXT NOT NULL DEFAULT 'novo',
+  status TEXT NOT NULL DEFAULT 'novo', -- 'novo' -> 'preparo' (opcional) -> 'entregue', ou 'cancelado'
   criado_em TEXT NOT NULL DEFAULT (datetime('now')),
   impresso INTEGER NOT NULL DEFAULT 0,
   erro_impressao TEXT
@@ -135,6 +135,35 @@ if (!colunaExiste('pedidos', 'entregue_em')) {
 if (!colunaExiste('admin_users', 'ativo')) {
   db.exec(`ALTER TABLE admin_users ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1`);
 }
+// Cancelamento de pedido (só gerente): status 'cancelado', com quem e por quê.
+// Guarda o nome (não o id) pra continuar legível mesmo se o usuário for excluído.
+if (!colunaExiste('pedidos', 'cancelado_em')) {
+  db.exec(`ALTER TABLE pedidos ADD COLUMN cancelado_em TEXT`);
+  db.exec(`ALTER TABLE pedidos ADD COLUMN cancelado_por TEXT`);
+  db.exec(`ALTER TABLE pedidos ADD COLUMN motivo_cancelamento TEXT`);
+}
+
+db.exec(`
+-- "Chamar garçom": o cliente chama pelo cardápio e o chamado aparece no painel do bar
+CREATE TABLE IF NOT EXISTS chamados (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  mesa_id INTEGER NOT NULL REFERENCES mesas(id),
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  atendido_em TEXT,
+  atendido_por TEXT
+);
+
+-- Log de atividades: quem mudou o quê no painel (preço, item, usuário, cancelamento...)
+CREATE TABLE IF NOT EXISTS atividades (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  usuario_id INTEGER,
+  usuario_nome TEXT NOT NULL,
+  acao TEXT NOT NULL,
+  detalhe TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_atividades_usuario ON atividades(usuario_id);
+`);
 
 // ---------- Seed inicial (só roda se não existir nada) ----------
 function seed() {

@@ -18,9 +18,16 @@
     <%- include('../partials/botao-tema') %>
   </header>
 
+  <% if (painelAtivo) { %>
+    <div class="cliente-acoes">
+      <button type="button" class="btn-chamar" id="btn-chamar">🙋 Chamar garçom</button>
+    </div>
+  <% } %>
+
   <div class="container" id="app">
 
     <div id="tela-home">
+      <div class="meus-pedidos" id="meus-pedidos" hidden></div>
       <% if (categorias.length === 0) { %>
         <p>Nenhum item disponível no momento.</p>
       <% } else { %>
@@ -120,6 +127,8 @@
 
   <script>
     const token = "<%= mesa.token %>";
+    const nomeMesa = <%- JSON.stringify(mesa.nome) %>;
+    const painelAtivo = <%- JSON.stringify(painelAtivo) %>;
     const itensComOpcoes = <%- JSON.stringify(categorias.flatMap(c => c.itens).filter(i => i.grupos.length > 0)) %>;
     const itensPorId = {};
     itensComOpcoes.forEach(it => (itensPorId[it.id] = it));
@@ -458,6 +467,117 @@
     document.getElementById('btn-ver-carrinho').addEventListener('click', abrirCarrinho);
     document.querySelectorAll('[data-fechar-carrinho]').forEach(btn => btn.addEventListener('click', fecharCarrinho));
 
+    // ---------- Acompanhar o pedido e chamar o garçom ----------
+    // Os números dos pedidos feitos neste celular ficam guardados nele mesmo, pra
+    // o cliente continuar vendo o andamento se recarregar a página.
+    const CHAVE_PEDIDOS = 'pedeai-pedidos-' + token;
+    const INTERVALO_ACOMPANHAR_MS = 8000;
+    const STATUS_CLIENTE = {
+      novo: 'Recebido pelo bar',
+      preparo: 'Em preparo',
+      entregue: 'Entregue',
+      cancelado: 'Cancelado — em caso de dúvida, chame o garçom'
+    };
+    const ETAPAS = [['novo', 'Recebido'], ['preparo', 'Em preparo'], ['entregue', 'Entregue']];
+    let chamadoAberto = false;
+    let ultimoAcompanhamento = null;
+
+    function pedidosGuardados() {
+      try {
+        const lista = JSON.parse(localStorage.getItem(CHAVE_PEDIDOS) || '[]');
+        return Array.isArray(lista) ? lista.filter(id => Number.isInteger(id)) : [];
+      } catch (e) { return []; }
+    }
+
+    function guardarPedidos(ids) {
+      try { localStorage.setItem(CHAVE_PEDIDOS, JSON.stringify(ids.slice(0, 20))); } catch (e) {}
+    }
+
+    function el(tag, classe, texto) {
+      const e = document.createElement(tag);
+      if (classe) e.className = classe;
+      if (texto != null) e.textContent = texto;
+      return e;
+    }
+
+    function cartaoStatus(pedido) {
+      const card = el('div', 'status-pedido status-' + pedido.status);
+      const topo = el('div', 'status-pedido-topo');
+      topo.append(el('strong', null, `Pedido nº ${pedido.id}`), el('span', 'status-pedido-rotulo', STATUS_CLIENTE[pedido.status] || pedido.status));
+      card.append(topo);
+      card.append(el('div', 'status-pedido-itens', pedido.itens.map(it => `${it.quantidade}x ${it.nome_item}`).join(', ')));
+
+      if (pedido.status !== 'cancelado') {
+        const atual = ETAPAS.findIndex(([status]) => status === pedido.status);
+        const etapas = el('ol', 'status-etapas');
+        ETAPAS.forEach(([, rotulo], i) => {
+          const li = el('li', i <= atual ? 'feita' : '', rotulo);
+          if (i === atual) li.setAttribute('aria-current', 'step');
+          etapas.append(li);
+        });
+        card.append(etapas);
+      }
+      return card;
+    }
+
+    function renderizarAcompanhamento() {
+      const cont = document.getElementById('meus-pedidos');
+      if (!cont || !ultimoAcompanhamento) return;
+      const pedidos = ultimoAcompanhamento.pedidos;
+      cont.hidden = pedidos.length === 0;
+      cont.replaceChildren(el('h2', 'meus-pedidos-titulo', pedidos.length === 1 ? 'Seu pedido' : 'Seus pedidos'), ...pedidos.map(cartaoStatus));
+    }
+
+    function atualizarBotaoChamar() {
+      const btn = document.getElementById('btn-chamar');
+      if (!btn) return;
+      btn.disabled = chamadoAberto;
+      btn.textContent = chamadoAberto ? '✓ Garçom chamado — já vem até a mesa' : '🙋 Chamar garçom';
+    }
+
+    async function acompanhar() {
+      const ids = pedidosGuardados();
+      try {
+        const resp = await fetch(`/pedido/${token}/acompanhar?ids=${ids.join(',')}`);
+        if (!resp.ok) return;
+        ultimoAcompanhamento = await resp.json();
+      } catch (e) { return; } // sem wifi: tenta de novo na próxima rodada
+      // Esquece pedidos antigos (mais de 12h) ou de outra mesa
+      guardarPedidos(ultimoAcompanhamento.pedidos.map(p => p.id));
+      chamadoAberto = ultimoAcompanhamento.chamadoAberto;
+      renderizarAcompanhamento();
+      atualizarBotaoChamar();
+    }
+
+    function precisaAcompanhar() {
+      if (document.visibilityState !== 'visible') return false;
+      if (chamadoAberto) return true;
+      // Para de consultar quando todos os pedidos já foram entregues ou cancelados
+      if (!ultimoAcompanhamento) return pedidosGuardados().length > 0;
+      return ultimoAcompanhamento.pedidos.some(p => p.status === 'novo' || p.status === 'preparo');
+    }
+
+    if (painelAtivo) {
+      acompanhar();
+      setInterval(() => { if (precisaAcompanhar()) acompanhar(); }, INTERVALO_ACOMPANHAR_MS);
+      document.addEventListener('visibilitychange', () => { if (precisaAcompanhar()) acompanhar(); });
+
+      document.getElementById('btn-chamar').addEventListener('click', async () => {
+        if (!confirm(`Chamar o garçom até a ${nomeMesa}?`)) return;
+        const btn = document.getElementById('btn-chamar');
+        btn.disabled = true;
+        try {
+          const resp = await fetch(`/pedido/${token}/chamar`, { method: 'POST' });
+          const data = await resp.json();
+          if (!data.ok) throw new Error(data.erro);
+          chamadoAberto = true;
+        } catch (e) {
+          alert((e && e.message) || 'Não foi possível chamar o garçom. Verifique o wifi e tente novamente.');
+        }
+        atualizarBotaoChamar();
+      });
+    }
+
     document.getElementById('btn-enviar').addEventListener('click', async () => {
       const itens = [];
 
@@ -493,8 +613,15 @@
               <h2>Pedido enviado! ✅</h2>
               <p>Seu pedido (nº ${data.pedidoId}) foi enviado ao bar.</p>
               ${data.avisoImpressao ? `<p class="texto-erro">${data.avisoImpressao}</p>` : '<p>Aguarde, o garçom levará até a sua mesa.</p>'}
-            </div>`;
+            </div>
+            ${painelAtivo ? '<div class="meus-pedidos" id="meus-pedidos" hidden></div>' : ''}
+            <button type="button" class="btn-secundario btn-outro-pedido" onclick="location.reload()">Fazer outro pedido</button>`;
           document.querySelectorAll('.footer-bar').forEach(el => (el.style.display = 'none'));
+          window.scrollTo(0, 0);
+          if (painelAtivo) {
+            guardarPedidos([data.pedidoId, ...pedidosGuardados().filter(id => id !== data.pedidoId)]);
+            acompanhar();
+          }
         } else {
           alert(data.erro || 'Não foi possível enviar o pedido.');
           btn.disabled = false;

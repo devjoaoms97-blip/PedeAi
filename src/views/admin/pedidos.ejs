@@ -11,13 +11,17 @@
   <%- include('../partials/admin-topbar') %>
   <div class="admin-container">
     <h2>Últimos pedidos</h2>
-    <% pedidos.forEach(p => { %>
-      <div class="card">
-        <div style="display:flex; justify-content:space-between;">
-          <strong>#<%= p.id %> · <%= p.mesa_nome %></strong>
+    <% if (msg) { %><div class="toast-sucesso"><%= msg %></div><% } %>
+    <% if (erro) { %><div class="alerta alerta-erro"><%= erro %></div><% } %>
+    <% pedidos.forEach(p => { const cancelado = p.status === 'cancelado'; %>
+      <div class="card" id="pedido-<%= p.id %>" <% if (cancelado) { %>style="opacity:0.75;"<% } %>>
+        <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+          <strong <% if (cancelado) { %>style="text-decoration:line-through;"<% } %>>#<%= p.id %> · <%= p.mesa_nome %></strong>
           <span>
+            <% if (cancelado) { %><span class="badge badge-erro">Cancelado</span><% } %>
+            <% if (p.status === 'preparo') { %><span class="badge badge-aviso">Em preparo</span><% } %>
             <% if (p.status === 'entregue') { %><span class="badge badge-ok">Entregue</span><% } %>
-            <% if (p.impresso || p.erro_impressao) { %>
+            <% if (!cancelado && (p.impresso || p.erro_impressao)) { %>
               <span class="badge <%= p.impresso ? 'badge-ok' : 'badge-erro' %>">
                 <%= p.impresso ? 'Impresso' : 'Não impresso' %>
               </span>
@@ -34,11 +38,30 @@
             </li>
           <% }) %>
         </ul>
-        <% if (p.erro_impressao) { %>
-          <div class="texto-erro" style="font-size:13px; margin-bottom:8px;">Erro: <%= p.erro_impressao %></div>
-          <form method="POST" action="/admin/pedidos/<%= p.id %>/reimprimir">
-            <button class="btn-secundario btn-mini" type="submit">Tentar reimprimir</button>
-          </form>
+        <% if (cancelado) { %>
+          <div class="texto-erro" style="font-size:13px;">
+            Cancelado por <strong><%= p.cancelado_por %></strong> em <%= p.cancelado_em_local %>:
+            <%= p.motivo_cancelamento %>
+          </div>
+        <% } else { %>
+          <% if (p.erro_impressao) { %>
+            <div class="texto-erro" style="font-size:13px; margin-bottom:8px;">Erro: <%= p.erro_impressao %></div>
+            <form method="POST" action="/admin/pedidos/<%= p.id %>/reimprimir">
+              <button class="btn-secundario btn-mini" type="submit">Tentar reimprimir</button>
+            </form>
+          <% } %>
+          <% if (usuario.ehGerente) { %>
+            <details class="cancelar-pedido">
+              <summary>Cancelar pedido</summary>
+              <form method="POST" action="/admin/pedidos/<%= p.id %>/cancelar"
+                    onsubmit="return confirm('Cancelar o pedido #<%= p.id %>? Ele sai do painel do bar e dos relatórios.');">
+                <label for="motivo-<%= p.id %>">Motivo (fica registrado com o seu nome)</label>
+                <input type="text" id="motivo-<%= p.id %>" name="motivo" required maxlength="200"
+                       placeholder="ex: cliente desistiu, pedido duplicado, item acabou">
+                <button class="btn-secundario btn-mini btn-perigo" type="submit">Confirmar cancelamento</button>
+              </form>
+            </details>
+          <% } %>
         <% } %>
       </div>
     <% }) %>

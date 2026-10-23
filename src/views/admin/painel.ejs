@@ -54,6 +54,28 @@
       font-family: inherit;
     }
     .btn-entregue:disabled { opacity: 0.5; }
+    .btn-preparo { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 8px; }
+    .selo-preparo {
+      display: inline-block; font-size: 13px; font-weight: 700; color: var(--aviso-texto);
+      background: var(--aviso-fundo); border-radius: 8px; padding: 2px 8px; margin-bottom: 8px; width: fit-content;
+    }
+
+    /* Chamados de garçom: faixa no topo, bem chamativa */
+    .chamados { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .chamados:empty { display: none; }
+    .chamado {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: var(--aviso-fundo); border: 2px solid var(--aviso); color: var(--aviso-texto);
+      border-radius: 14px; padding: 12px 16px; font-size: 18px;
+    }
+    .chamado.chegou { animation: piscar 1s ease-in-out 3; }
+    .chamado .chamado-texto { flex: 1; }
+    .chamado .chamado-tempo { font-size: 14px; font-weight: 600; }
+    .chamado button {
+      padding: 12px 20px; font-size: 16px; font-weight: 700; border: none; border-radius: 10px;
+      background: var(--aviso); color: #fff; cursor: pointer; font-family: inherit;
+    }
+    .chamado button:disabled { opacity: 0.5; }
 
     .vazio { text-align: center; color: var(--texto-fraco); padding: 48px 16px; font-size: 18px; }
 
@@ -77,6 +99,7 @@
       <button class="btn-secundario" id="btn-som" type="button">🔇 Ativar som</button>
     </div>
 
+    <div class="chamados" id="chamados" aria-live="polite"></div>
     <div class="grade-pedidos" id="grade"></div>
     <div class="vazio" id="vazio" hidden>Nenhum pedido esperando. 🎉</div>
 
@@ -98,8 +121,10 @@
     const btnSom = document.getElementById('btn-som');
     const blocoEntregues = document.getElementById('entregues');
     const listaEntregues = document.getElementById('lista-entregues');
+    const blocoChamados = document.getElementById('chamados');
 
     let idsConhecidos = null; // null = primeira carga (não toca som pelos pedidos que já estavam lá)
+    let chamadosConhecidos = null;
     let somAtivo = false;
     let audioCtx = null;
     let diferencaRelogio = 0; // servidor - navegador, pra calcular o tempo de espera certo
@@ -142,6 +167,8 @@
       return Math.max(0, Math.floor((Date.now() + diferencaRelogio - dataUtc(pedido.criado_em)) / 60000));
     }
 
+    const textoTempo = min => (min === 0 ? 'agora' : `${min} min`);
+
     function el(tag, classe, texto) {
       const e = document.createElement(tag);
       if (classe) e.className = classe;
@@ -158,9 +185,12 @@
 
       const topo = el('div', 'pedido-topo');
       topo.append(el('span', 'pedido-mesa', pedido.mesa_nome));
-      topo.append(el('span', 'pedido-tempo', min === 0 ? 'agora' : `${min} min`));
+      topo.append(el('span', 'pedido-tempo', textoTempo(min)));
       card.append(topo);
       card.append(el('div', 'pedido-numero', `Pedido #${pedido.id}`));
+      if (pedido.status === 'preparo') {
+        card.append(el('span', 'selo-preparo', 'Em preparo'));
+      }
 
       const ul = el('ul');
       pedido.itens.forEach(it => {
@@ -176,6 +206,18 @@
         card.append(el('div', 'aviso-impressao', '⚠️ Não foi impresso'));
       }
 
+      // "Em preparo" é opcional: só serve pra o cliente ver no celular que o bar já começou
+      if (pedido.status === 'novo') {
+        const preparo = el('button', 'btn-secundario btn-preparo', 'Começar preparo');
+        preparo.type = 'button';
+        preparo.addEventListener('click', async () => {
+          preparo.disabled = true;
+          await enviar(`/admin/painel/${pedido.id}/preparo`);
+          atualizar();
+        });
+        card.append(preparo);
+      }
+
       const botao = el('button', 'btn-entregue', '✓ Entregue');
       botao.type = 'button';
       botao.addEventListener('click', async () => {
@@ -186,6 +228,23 @@
       });
       card.append(botao);
       return card;
+    }
+
+    function cartaoChamado(chamado, novo) {
+      const linha = el('div', 'chamado' + (novo ? ' chegou' : ''));
+      const texto = el('span', 'chamado-texto');
+      texto.append(document.createTextNode('🙋 '), el('strong', null, chamado.mesa_nome), document.createTextNode(' chamou o garçom'));
+      linha.append(texto, el('span', 'chamado-tempo', textoTempo(minutosEsperando(chamado))));
+      const botao = el('button', null, 'Atendido');
+      botao.type = 'button';
+      botao.addEventListener('click', async () => {
+        botao.disabled = true;
+        const ok = await enviar(`/admin/painel/chamados/${chamado.id}/atendido`);
+        if (ok) linha.remove(); else botao.disabled = false;
+        atualizar();
+      });
+      linha.append(botao);
+      return linha;
     }
 
     function linhaEntregue(pedido) {
@@ -239,17 +298,23 @@
 
       const idsAtuais = new Set(dados.novos.map(p => p.id));
       const chegaram = idsConhecidos ? dados.novos.filter(p => !idsConhecidos.has(p.id)) : [];
-      if (chegaram.length > 0) tocarAviso();
+      const chamadosAtuais = new Set(dados.chamados.map(c => c.id));
+      const chamaram = chamadosConhecidos ? dados.chamados.filter(c => !chamadosConhecidos.has(c.id)) : [];
+      if (chegaram.length > 0 || chamaram.length > 0) tocarAviso();
+
+      blocoChamados.replaceChildren(...dados.chamados.map(c => cartaoChamado(c, chamaram.includes(c))));
 
       grade.replaceChildren(...dados.novos.map(p => cartaoPedido(p, chegaram.includes(p))));
-      vazio.hidden = dados.novos.length > 0;
+      vazio.hidden = dados.novos.length > 0 || dados.chamados.length > 0;
       contador.textContent = dados.novos.length;
-      document.title = (dados.novos.length ? `(${dados.novos.length}) ` : '') + 'Painel do bar';
+      const pendentes = dados.novos.length + dados.chamados.length;
+      document.title = (pendentes ? `(${pendentes}) ` : '') + 'Painel do bar';
 
       listaEntregues.replaceChildren(...dados.entregues.map(linhaEntregue));
       blocoEntregues.hidden = dados.entregues.length === 0;
 
       idsConhecidos = idsAtuais;
+      chamadosConhecidos = chamadosAtuais;
     }
 
     atualizar();
